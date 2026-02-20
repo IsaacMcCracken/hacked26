@@ -10,8 +10,24 @@ Prim :: union {
 	i64,
 	f32,
 	f64,
+	string,
 }
 
-Stmt :: struct {
+PrimNode :: struct {
+	using link: list.Node,
+	val:        Prim,
+}
+
+Entry :: struct {}
+
+Routine :: struct {}
+
+Print :: struct {}
+
+
+Block :: struct {
 	using node: list.Node,
+	kind:       union {
+		Entry,
+	},
 }
