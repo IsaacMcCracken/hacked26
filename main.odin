@@ -27,7 +27,7 @@ build_and_run :: proc() {
 
 
 main :: proc() {
-	build_and_run()
+	// build_and_run()
 	rl.InitWindow(960, 540, "microui-odin")
 	defer rl.CloseWindow()
 
