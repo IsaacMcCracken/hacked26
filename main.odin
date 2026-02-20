@@ -1,10 +1,10 @@
 package vizcode
 
+import "core:c/libc"
 import "core:fmt"
 import "core:unicode/utf8"
 import mu "vendor:microui"
 import rl "vendor:raylib"
-
 state := struct {
 	mu_ctx:          mu.Context,
 	log_buf:         [1 << 16]byte,
@@ -12,11 +12,20 @@ state := struct {
 	log_buf_updated: bool,
 	bg:              mu.Color,
 	atlas_texture:   rl.Texture2D,
+	entities:        [1 << 15]Entity,
 } {
 	bg = {90, 95, 100, 255},
 }
 
+
+build_and_run :: proc() {
+	libc.system("gcc -o game helloworld.c")
+	libc.system("./game")
+}
+
+
 main :: proc() {
+	build_and_run()
 	rl.InitWindow(960, 540, "microui-odin")
 	defer rl.CloseWindow()
 
