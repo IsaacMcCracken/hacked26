@@ -6,13 +6,15 @@ import "core:unicode/utf8"
 import mu "vendor:microui"
 import rl "vendor:raylib"
 state := struct {
-	mu_ctx:          mu.Context,
-	log_buf:         [1 << 16]byte,
-	log_buf_len:     int,
-	log_buf_updated: bool,
-	bg:              mu.Color,
-	atlas_texture:   rl.Texture2D,
-	entities:        [1 << 15]Entity,
+	mu_ctx:           mu.Context,
+	log_buf:          [1 << 16]byte,
+	log_buf_len:      int,
+	log_buf_updated:  bool,
+	bg:               mu.Color,
+	atlas_texture:    rl.Texture2D,
+	entities:         [1 << 15]Entity,
+	entity_alloc_pos: Index,
+	entity_free_list: Index,
 } {
 	bg = {90, 95, 100, 255},
 }
