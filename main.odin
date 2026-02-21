@@ -29,40 +29,64 @@ state := struct {
 	bg = {90, 95, 100, 255},
 }
 
-Build_Status :: enum {
+Script_Status :: enum {
     Idle,
-    Building,
+    Running,
     Waiting_For_RPI,
-    Transferring,
-    Done,
 }
 
-build_status: Build_Status = .Idle
-STATUS_FILE :: "/tmp/vizcode_build_status"
+build_status: Script_Status = .Idle
+flash_status: Script_Status = .Idle
+
+BUILD_STATUS_FILE :: "/tmp/vizcode_build_status"
+FLASH_STATUS_FILE :: "/tmp/vizcode_flash_status"
 
 build_thread_proc :: proc(t: ^thread.Thread) {
     libc.system("bash ./build.sh")
 }
 
+flash_thread_proc :: proc(t: ^thread.Thread) {
+    libc.system("bash ./flash.sh")
+}
+
 launch_build :: proc() {
-    build_status = .Building
+    build_status = .Running
     t := thread.create(build_thread_proc)
     thread.start(t)
 }
 
-poll_build_status :: proc() {
-    if build_status == .Idle || build_status == .Done do return
+launch_flash :: proc() {
+    flash_status = .Running
+    t := thread.create(flash_thread_proc)
+    thread.start(t)
+}
 
-    data, ok := os.read_entire_file(STATUS_FILE)
+poll_build_status :: proc() {
+    if build_status == .Idle do return
+
+    data, ok := os.read_entire_file(BUILD_STATUS_FILE)
     if !ok do return
     defer delete(data)
 
-    s := strings.trim_space(string(data))
-    switch s {
-    case "BUILDING":        build_status = .Building
-    case "WAITING_FOR_RPI": build_status = .Waiting_For_RPI
-    case "TRANSFERRING":    build_status = .Transferring
-    case "DONE":            build_status = .Done
+    switch strings.trim_space(string(data)) {
+    case "DONE":
+        write_log("Build finished")
+        build_status = .Idle
+    }
+}
+
+poll_flash_status :: proc() {
+    if flash_status == .Idle do return
+
+    data, ok := os.read_entire_file(FLASH_STATUS_FILE)
+    if !ok do return
+    defer delete(data)
+
+    switch strings.trim_space(string(data)) {
+    case "WAITING_FOR_RPI": flash_status = .Waiting_For_RPI
+    case "DONE":
+        write_log("Flash finished")
+        flash_status = .Idle
     }
 }
 
@@ -172,7 +196,8 @@ main :: proc() {
 			}
 		}
 		
-		poll_build_status();
+		poll_build_status()
+		poll_flash_status()
 
 		mu.begin(ctx)
 		all_windows(ctx)

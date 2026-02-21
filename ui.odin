@@ -305,16 +305,23 @@ all_windows :: proc(ctx: ^mu.Context) {
 	// demo_windows(ctx, &opts)
 
 	// Top action taskbar
-	top_taskbar_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_SCROLL, .NO_CLOSE, .NO_TITLE}
+	top_taskbar_opts := mu.Options{.NO_RESIZE, .NO_SCROLL, .NO_CLOSE, .NO_TITLE}
 	top_taskbar_rect := mu.Rect{0, 0, rl.GetScreenWidth(), rl.GetScreenHeight() / 16}
 	if mu.window(ctx, "Top Task Bar", top_taskbar_rect, top_taskbar_opts) {
-		mu.layout_row(ctx, {120, -90, -60, -30, -1})
-		if build_status == .Idle || build_status == .Done {
-			if .SUBMIT in mu.button(ctx, "Build & Flash") {
+		mu.layout_row(ctx, {100, 100, -90, -60, -30, -1})
+		if build_status == .Idle {
+			if .SUBMIT in mu.button(ctx, "Build") {
 				launch_build()
 			}
 		} else {
 			mu.button(ctx, "Building...")
+		}
+		if flash_status == .Idle {
+			if .SUBMIT in mu.button(ctx, "Flash") {
+				launch_flash()
+			}
+		} else {
+			mu.button(ctx, "Flashing...")
 		}
 		mu.label(ctx, "") // Empty space
 		if .SUBMIT in mu.button(ctx, "___", .NONE, mu.Options{.ALIGN_CENTER}) {
@@ -328,27 +335,17 @@ all_windows :: proc(ctx: ^mu.Context) {
 		}
 	}
 
-
-	if build_status == .Waiting_For_RPI {
-		popup_opts := mu.Options{.NO_CLOSE, .NO_RESIZE}
-		if mu.window(ctx, "RPI Popup", {300, 200, 360, 100}, popup_opts) {
-			mu.layout_row(ctx, {-1})
-			mu.label(ctx, "Plug in RPI while holding BOOT button")
-			mu.layout_row(ctx, {-1})
-			mu.label(ctx, "Waiting for device...")
-		}
+	// Popup only shown while waiting for RPI to be plugged in
+	rpi_popup_opts := mu.Options{.NO_CLOSE, .NO_RESIZE}
+	if mu.window(ctx, "RPI Popup", {300, 200, 360, 100}, rpi_popup_opts) {
+		mu.layout_row(ctx, {-1})
+		mu.label(ctx, "Plug in RPI while holding BOOT button")
+		mu.layout_row(ctx, {-1})
+		mu.label(ctx, "Waiting for device...")
 	}
-
-	if build_status == .Transferring || build_status == .Done {
-		popup_opts := mu.Options{.NO_RESIZE}
-		if mu.window(ctx, "Flash Popup", {300, 200, 300, 80}, popup_opts) {
-			mu.layout_row(ctx, {-1})
-			if build_status == .Transferring {
-				mu.label(ctx, "Transferring .uf2 to RPI...")
-			} else {
-				mu.label(ctx, "Flash complete! RPI rebooting.")
-			}
-		}
+	rpi_popup := mu.get_container(ctx, "RPI Popup")
+	if rpi_popup != nil {
+		rpi_popup.open = flash_status == .Waiting_For_RPI
 	}
 
 	// Log window
