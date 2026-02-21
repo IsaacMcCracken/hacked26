@@ -139,13 +139,10 @@ block :: proc(ctx: ^mu.Context, hover: bool, show_snap_target: bool)
 	}
 }
 
-all_windows :: proc(ctx: ^mu.Context)
+demo_windows :: proc(ctx: ^mu.Context, opts: ^mu.Options)
 {
-	//block(ctx, true, true)
-	@(static) opts := mu.Options{.NO_CLOSE}
-
-	if mu.window(ctx, "Demo Window", {40, 40, 300, 450}, opts)
-	{
+   	if mu.window(ctx, "Demo Window", {40, 40, 300, 450}, opts^)
+	{   
 		if .ACTIVE in mu.header(ctx, "Window Info") {
 			win := mu.get_current_container(ctx)
 			mu.layout_row(ctx, {54, -1}, 0)
@@ -154,21 +151,21 @@ all_windows :: proc(ctx: ^mu.Context)
 			mu.label(ctx, "Size:")
 			mu.label(ctx, fmt.tprintf("%d, %d", win.rect.w, win.rect.h))
 		}
-
+   
 		if .ACTIVE in mu.header(ctx, "Window Options") {
 			mu.layout_row(ctx, {120, 120, 120}, 0)
 			for opt in mu.Opt {
-				state := opt in opts
+				state := opt in opts^
 				if .CHANGE in mu.checkbox(ctx, fmt.tprintf("%v", opt), &state) {
 					if state {
-						opts += {opt}
+						opts^ += {opt}
 					} else {
-						opts -= {opt}
+						opts^ -= {opt}
 					}
 				}
 			}
 		}
-
+   
 		if .ACTIVE in mu.header(ctx, "Test Buttons", {.EXPANDED}) {
 			mu.layout_row(ctx, {86, -110, -1})
 			mu.label(ctx, "Test buttons 1:")
@@ -178,7 +175,7 @@ all_windows :: proc(ctx: ^mu.Context)
 			if .SUBMIT in mu.button(ctx, "Button 3") {write_log("Pressed button 3")}
 			if .SUBMIT in mu.button(ctx, "Button 4") {write_log("Pressed button 4")}
 		}
-
+   
 		if .ACTIVE in mu.header(ctx, "Tree and Text", {.EXPANDED}) {
 			mu.layout_row(ctx, {140, -1})
 			mu.layout_begin_column(ctx)
@@ -204,10 +201,10 @@ all_windows :: proc(ctx: ^mu.Context)
 				mu.checkbox(ctx, "Checkbox 1", &checks[0])
 				mu.checkbox(ctx, "Checkbox 2", &checks[1])
 				mu.checkbox(ctx, "Checkbox 3", &checks[2])
-
+   
 			}
 			mu.layout_end_column(ctx)
-
+   
 			mu.layout_begin_column(ctx)
 			mu.layout_row(ctx, {-1})
 			mu.text(
@@ -218,7 +215,7 @@ all_windows :: proc(ctx: ^mu.Context)
 			)
 			mu.layout_end_column(ctx)
 		}
-
+   
 		if .ACTIVE in mu.header(ctx, "Background Colour", {.EXPANDED}) {
 			mu.layout_row(ctx, {-78, -1}, 68)
 			mu.layout_begin_column(ctx)
@@ -229,7 +226,7 @@ all_windows :: proc(ctx: ^mu.Context)
 				mu.label(ctx, "Blue:"); u8_slider(ctx, &state.bg.b, 0, 255)
 			}
 			mu.layout_end_column(ctx)
-
+   
 			r := mu.layout_next(ctx)
 			mu.draw_rect(ctx, r, state.bg)
 			mu.draw_box(ctx, mu.expand_rect(r, 1), ctx.style.colors[.BORDER])
@@ -242,8 +239,8 @@ all_windows :: proc(ctx: ^mu.Context)
 			)
 		}
 	}
-
-	if mu.window(ctx, "Log Window", {350, 40, 300, 200}, opts) {
+   
+	if mu.window(ctx, "Log Window", {350, 40, 300, 200}, opts^) {
 		mu.layout_row(ctx, {-1}, -28)
 		mu.begin_panel(ctx, "Log")
 		mu.layout_row(ctx, {-1}, -1)
@@ -254,7 +251,7 @@ all_windows :: proc(ctx: ^mu.Context)
 			state.log_buf_updated = false
 		}
 		mu.end_panel(ctx)
-
+   
 		@(static) buf: [128]byte
 		@(static) buf_len: int
 		submitted := false
@@ -271,7 +268,7 @@ all_windows :: proc(ctx: ^mu.Context)
 			buf_len = 0
 		}
 	}
-
+   
 	if mu.window(ctx, "Style Window", {350, 250, 300, 240}) {
 		@(static) colors := #partial [mu.Color_Type]string {
 			.TEXT         = "text",
@@ -289,7 +286,7 @@ all_windows :: proc(ctx: ^mu.Context)
 			.SCROLL_BASE  = "scroll base",
 			.SCROLL_THUMB = "scroll thumb",
 		}
-
+   
 		sw := i32(f32(mu.get_current_container(ctx).body.w) * 0.14)
 		mu.layout_row(ctx, {80, sw, sw, sw, sw, -1})
 		for label, col in colors {
@@ -301,5 +298,11 @@ all_windows :: proc(ctx: ^mu.Context)
 			mu.draw_rect(ctx, mu.layout_next(ctx), ctx.style.colors[col])
 		}
 	}
+}
 
+all_windows :: proc(ctx: ^mu.Context)
+{
+	//block(ctx, true, true)
+	@(static) opts := mu.Options{.NO_CLOSE}
+	demo_windows(ctx, &opts)
 }
