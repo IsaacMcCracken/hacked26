@@ -1,72 +1,64 @@
 package vizcode
 
 import "core:container/intrusive/list"
+import "core:fmt"
+import rl "vendor:raylib"
 
-Editor_State :: struct 
-{
-	ui_blocks:	[dynamic]^UI_Block,
-	mouse_pos:  vec2
+Editor_State :: struct {
+	ui_blocks: [dynamic]^UI_Block,
+	mouse_pos: vec2,
 }
 
-UI_Block :: struct
-{
-	pos		 : vec2,
-	size	 : vec2,
-	hovered  : bool,
-	selected : bool,
-	using link : list.Node,
-	children   : list.List
+UI_Block :: struct {
+	using link: list.Node,
+	pos:        vec2,
+	size:       vec2,
+	hovered:    bool,
+	selected:   bool,
+	children:   list.List,
 }
 
-init_editor :: proc(state: ^Editor_State)
-{
+init_editor :: proc(state: ^Editor_State) {
 	blocks := &state.ui_blocks
-	// Create and add 3 root blocks
-	b1 := new(UI_Block)
 
-	b2 := new(UI_Block)
-	b2A := new(UI_Block)
-	b2B := new(UI_Block)
+	a := new(UI_Block)
+	b := new(UI_Block)
+	c := new(UI_Block)
 
-	b3 := new(UI_Block)
+	a.pos = {300, 100}
+	list.push_back(&a.children, b)
+	list.push_back(&a.children, c)
 
-
-	b2^ = UI_Block{pos = {200, 25}, size = {50, 50}}
-
-
-	b1^ = UI_Block{pos = {25, 25},	size = {100, 100}}
-
-
-	b3^ = UI_Block{pos = {300, 25}, size = {50, 75}}
-
-	append(blocks, b1, b2, b3)
+	append(blocks, a)
 }
 
-mouse_in_block :: proc(block: ^UI_Block, mp: vec2) -> bool
-{
+mouse_in_block :: proc(block: ^UI_Block, mp: vec2) -> bool {
 	in_x := mp.x >= block.pos.x && mp.x <= (block.pos.x + block.size.x)
 	in_y := mp.y >= block.pos.y && mp.y <= (block.pos.y + block.size.y)
 
 	return in_x && in_y
 }
 
-get_hovered_block :: proc(block: ^UI_Block, s: ^Editor_State, base_depth : u32 = 0) -> (hovered: ^UI_Block, depth: u32)
-{
+get_hovered_block :: proc(
+	block: ^UI_Block,
+	s: ^Editor_State,
+	base_depth: u32 = 0,
+) -> (
+	hovered: ^UI_Block,
+	depth: u32,
+) {
 	// Lowest hovered block
 	h: ^UI_Block
 	// Depth of lowest hovered block
 	d := base_depth
 
 	// Check if self is hovered
-	if (mouse_in_block(block, s.mouse_pos)) { h = block }
-	else {block.hovered = false}
+	if (mouse_in_block(block, s.mouse_pos)) {h = block} else {block.hovered = false}
 
 	iter := list.iterator_head(block.children, UI_Block, "link")
-	for child in list.iterate_next(&iter)
-	{
+	for child in list.iterate_next(&iter) {
 		hovered_child, child_depth := get_hovered_block(child, s, base_depth + 1)
-		if (child != nil && child_depth > d)
-		{
+		if (child != nil && child_depth > d) {
 			h = hovered_child
 			d = child_depth
 		}
@@ -75,30 +67,90 @@ get_hovered_block :: proc(block: ^UI_Block, s: ^Editor_State, base_depth : u32 =
 	return h, d
 }
 
-find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State)
-{
+find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State) {
 	// check each root block for selection
-	first_hovered : ^UI_Block
-	loopy : for block in root_blocks
-	{
+	first_hovered: ^UI_Block
+	loopy: for block in root_blocks {
 		hovered_block, depth := get_hovered_block(block, state)
-		if (hovered_block != nil)
-		{
+		if (hovered_block != nil) {
 			first_hovered = hovered_block
 			break loopy
 		}
 	}
 
-	if (first_hovered != nil)
-	{
-		first_hovered.hovered = true;
+	if (first_hovered != nil) {
+		first_hovered.hovered = true
 	}
 }
 
-update_editor :: proc(state: ^Editor_State, mouse_pos: vec2)
-{
+
+ui_render_pass :: proc(s: ^Editor_State) {
+	ui_render_block :: proc(s: ^Editor_State, b: ^UI_Block) {
+		rec := rl.Rectangle {
+			x      = b.pos.x,
+			y      = b.pos.y,
+			width  = b.size.x,
+			height = b.size.y,
+		}
+		rl.DrawRectangleRec(rec, rl.DARKGRAY)
+		rl.DrawRectangleLinesEx(rec, 2, rl.RAYWHITE)
+
+		iter := list.iterator_head(b.children, UI_Block, "link")
+		for child in list.iterate_next(&iter) {
+			ui_render_block(s, child)
+		}
+	}
+
+	for block in s.ui_blocks {
+		ui_render_block(s, block)
+	}
+}
+
+ui_layout_pass :: proc(s: ^Editor_State) {
+	ui_layout_block :: proc(s: ^Editor_State, b: ^UI_Block, p: ^UI_Block = nil, level := 0) {
+		DEFAULT_SPACE :: 2
+		DEFAULT_SIZE :: vec2{200, 30}
+		DEFAULT_MARGIN :: 15
+		b.size = DEFAULT_SIZE
+
+		// if it has a parent we change the size
+		if p != nil {
+			b.pos.x = p.pos.x + DEFAULT_MARGIN
+			prev := transmute(^UI_Block)b.prev
+			if prev == nil {
+				b.pos.y = p.pos.y + DEFAULT_MARGIN
+			} else {
+				b.pos.y = prev.pos.y + prev.size.y + DEFAULT_SPACE
+			}
+		}
+
+		// if we have children we change our size
+		if !list.is_empty(&b.children) {
+			iter := list.iterator_head(b.children, UI_Block, "link")
+			count := 0
+			for child in list.iterate_next(&iter) {
+				count += 1
+				fmt.println("FUCKYOU", count)
+				ui_layout_block(s, child, b, level + 1)
+			}
+
+			tail := transmute(^UI_Block)b.children.tail
+			rel := tail.pos - b.pos
+			b.size.y = rel.y + tail.size.y + DEFAULT_MARGIN
+		}
+
+	}
+
+	for root in s.ui_blocks {
+		ui_layout_block(s, root)
+	}
+}
+
+
+update_editor :: proc(state: ^Editor_State, mouse_pos: vec2) {
 	state.mouse_pos = mouse_pos
 	// TODO(rordon): layout pass
+	ui_layout_pass(state)
 
 	// TODO(rordon): selection pass
 	find_hovered_block(&state.ui_blocks, state)

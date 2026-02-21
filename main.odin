@@ -1,16 +1,16 @@
 package vizcode
 
 when ODIN_OS != .Windows {
-    foreign import libc "system:c"
-    
-    foreign libc {
-        system :: proc(command: cstring) -> i32 ---
-    }
+	foreign import libc "system:c"
+
+	foreign libc {
+		system :: proc(command: cstring) -> i32 ---
+	}
 }
-import "core:thread"
+import "core:container/intrusive/list"
 import "core:os"
 import "core:strings"
-import "core:container/intrusive/list"
+import "core:thread"
 import "core:unicode/utf8"
 import mu "vendor:microui"
 import rl "vendor:raylib"
@@ -20,25 +20,25 @@ vec2 :: rl.Vector2
 import ui "ui"
 
 state := struct {
-	mu_ctx:             mu.Context,
-	log_buf:            [1 << 16]byte,
-	log_buf_len:        int,
-	log_buf_updated:    bool,
-	bg:                 mu.Color,
-	atlas_texture:      rl.Texture2D,
-	entities:           [1 << 15]ui.Component,
-	entity_alloc_pos:   ui.Index,
-	entity_free_list:   ui.Index,
-	root_blocks:        [dynamic]^Block,
-	ui_blocks:          [dynamic]^UI_Block,
+	mu_ctx:           mu.Context,
+	log_buf:          [1 << 16]byte,
+	log_buf_len:      int,
+	log_buf_updated:  bool,
+	bg:               mu.Color,
+	atlas_texture:    rl.Texture2D,
+	entities:         [1 << 15]ui.Component,
+	entity_alloc_pos: ui.Index,
+	entity_free_list: ui.Index,
+	root_blocks:      [dynamic]^Block,
+	ui_blocks:        [dynamic]^UI_Block,
 } {
 	bg = {90, 95, 100, 255},
 }
 
 Script_Status :: enum {
-    Idle,
-    Running,
-    Waiting_For_RPI,
+	Idle,
+	Running,
+	Waiting_For_RPI,
 }
 
 build_status: Script_Status = .Idle
@@ -48,56 +48,57 @@ BUILD_STATUS_FILE :: "/tmp/vizcode_build_status"
 FLASH_STATUS_FILE :: "/tmp/vizcode_flash_status"
 
 build_thread_proc :: proc(t: ^thread.Thread) {
-    when ODIN_OS != .Windows {
-        system("bash ./build.sh")
-    }
+	when ODIN_OS != .Windows {
+		system("bash ./build.sh")
+	}
 }
 
 flash_thread_proc :: proc(t: ^thread.Thread) {
-    when ODIN_OS != .Windows {
-        system("bash ./flash.sh")
-    }
+	when ODIN_OS != .Windows {
+		system("bash ./flash.sh")
+	}
 }
 
 launch_build :: proc() {
-    build_status = .Running
-    t := thread.create(build_thread_proc)
-    thread.start(t)
+	build_status = .Running
+	t := thread.create(build_thread_proc)
+	thread.start(t)
 }
 
 launch_flash :: proc() {
-    flash_status = .Running
-    t := thread.create(flash_thread_proc)
-    thread.start(t)
+	flash_status = .Running
+	t := thread.create(flash_thread_proc)
+	thread.start(t)
 }
 
 poll_build_status :: proc() {
-    if build_status == .Idle do return
+	if build_status == .Idle do return
 
-    data, ok := os.read_entire_file(BUILD_STATUS_FILE)
-    if !ok do return
-    defer delete(data)
+	data, ok := os.read_entire_file(BUILD_STATUS_FILE)
+	if !ok do return
+	defer delete(data)
 
-    switch strings.trim_space(string(data)) {
-    case "DONE":
-        write_log("Build finished")
-        build_status = .Idle
-    }
+	switch strings.trim_space(string(data)) {
+	case "DONE":
+		write_log("Build finished")
+		build_status = .Idle
+	}
 }
 
 poll_flash_status :: proc() {
-    if flash_status == .Idle do return
+	if flash_status == .Idle do return
 
-    data, ok := os.read_entire_file(FLASH_STATUS_FILE)
-    if !ok do return
-    defer delete(data)
+	data, ok := os.read_entire_file(FLASH_STATUS_FILE)
+	if !ok do return
+	defer delete(data)
 
-    switch strings.trim_space(string(data)) {
-    case "WAITING_FOR_RPI": flash_status = .Waiting_For_RPI
-    case "DONE":
-        write_log("Flash finished")
-        flash_status = .Idle
-    }
+	switch strings.trim_space(string(data)) {
+	case "WAITING_FOR_RPI":
+		flash_status = .Waiting_For_RPI
+	case "DONE":
+		write_log("Flash finished")
+		flash_status = .Idle
+	}
 }
 
 main :: proc() {
@@ -142,14 +143,13 @@ main :: proc() {
 
 	repeatBlock := &Block{kind = g}
 
-	main_loop: for !rl.WindowShouldClose()
-	{
+	main_loop: for !rl.WindowShouldClose() {
 		// mouse coordinates
 		mouse_pos := [2]i32{rl.GetMouseX(), rl.GetMouseY()}
 		mu.input_mouse_move(ctx, mouse_pos.x, mouse_pos.y)
 		mu.input_scroll(ctx, 0, i32(rl.GetMouseWheelMove() * -30))
 
-		// Update Editor 
+		// Update Editor
 		update_editor(&editor_state, rl.GetMousePosition())
 
 
@@ -205,7 +205,7 @@ main :: proc() {
 				mu.input_key_up(ctx, key.mu_key)
 			}
 		}
-		
+
 		poll_build_status()
 		poll_flash_status()
 
@@ -213,6 +213,6 @@ main :: proc() {
 		all_windows(ctx)
 		mu.end(ctx)
 
-		render(ctx, &editor_state.ui_blocks)
+		render(&editor_state)
 	}
 }

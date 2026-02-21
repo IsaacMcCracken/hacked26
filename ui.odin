@@ -6,17 +6,12 @@ import "core:unicode/utf8"
 import mu "vendor:microui"
 import rl "vendor:raylib"
 
-render_blocks :: proc(blocks: ^[dynamic]^UI_Block) {
-	for block in blocks {
-		rl.DrawRectangleV(block.pos, block.size, rl.RED)
-		if (block.hovered) {
-			rect := rl.Rectangle{block.pos.x, block.pos.y, block.size.x, block.size.y}
-			rl.DrawRectangleLinesEx(rect, 2.0, rl.BLACK)
-		}
-	}
+render_blocks :: proc(s: ^Editor_State) {
+	ui_render_pass(s)
 }
 
-render :: proc(ctx: ^mu.Context, ui_blocks: ^[dynamic]^UI_Block) {
+render :: proc(s: ^Editor_State) {
+	ctx := &state.mu_ctx
 	// Renders glyphs, icons on the texture atlas.
 	render_texture :: proc(rect: mu.Rect, pos: [2]i32, color: mu.Color) {
 		source := rl.Rectangle{f32(rect.x), f32(rect.y), f32(rect.w), f32(rect.h)}
@@ -33,7 +28,7 @@ render :: proc(ctx: ^mu.Context, ui_blocks: ^[dynamic]^UI_Block) {
 	rl.BeginScissorMode(0, 0, rl.GetScreenWidth(), rl.GetScreenHeight())
 	defer rl.EndScissorMode()
 
-	render_blocks(ui_blocks)
+	render_blocks(s)
 
 	command_backing: ^mu.Command
 	for variant in mu.next_command_iterator(ctx, &command_backing) {
