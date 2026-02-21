@@ -50,12 +50,48 @@ mouse_in_block :: proc(block: ^UI_Block, mp: vec2) -> bool
 	return in_x && in_y
 }
 
-get_hovered_block :: proc(blocks: ^[dynamic]^UI_Block, state: ^Editor_State)
+get_hovered_block :: proc(block: ^UI_Block, s: ^Editor_State, base_depth : u32 = 0) -> (hovered: ^UI_Block, depth: u32)
+{
+	// Lowest hovered block
+	h: ^UI_Block
+	// Depth of lowest hovered block
+	d := base_depth
+
+	// Check if self is hovered
+	if (mouse_in_block(block, s.mouse_pos)) { h = block }
+	else {block.hovered = false}
+
+	iter := list.iterator_head(block.children, UI_Block, "link")
+	for child in list.iterate_next(&iter)
+	{
+		hovered_child, child_depth := get_hovered_block(child, s, base_depth + 1)
+		if (child != nil && child_depth > d)
+		{
+			h = hovered_child
+			d = child_depth
+		}
+	}
+
+	return h, d
+}
+
+find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State)
 {
 	// check each root block for selection
-	for block in blocks
+	first_hovered : ^UI_Block
+	loopy : for block in root_blocks
 	{
-		block.hovered = mouse_in_block(block, state.mouse_pos);
+		hovered_block, depth := get_hovered_block(block, state)
+		if (hovered_block != nil)
+		{
+			first_hovered = hovered_block
+			break loopy
+		}
+	}
+
+	if (first_hovered != nil)
+	{
+		first_hovered.hovered = true;
 	}
 }
 
@@ -65,5 +101,5 @@ update_editor :: proc(state: ^Editor_State, mouse_pos: vec2)
 	// TODO(rordon): layout pass
 
 	// TODO(rordon): selection pass
-	get_hovered_block(&state.ui_blocks, state)
+	find_hovered_block(&state.ui_blocks, state)
 }
