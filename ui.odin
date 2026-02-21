@@ -9,8 +9,7 @@ import rl "vendor:raylib"
 render_blocks :: proc(blocks: ^[dynamic]^UI_Block) {
 	for block in blocks {
 		rl.DrawRectangleV(block.pos, block.size, rl.RED)
-		if (block.hovered)
-		{
+		if (block.hovered) {
 			rect := rl.Rectangle{block.pos.x, block.pos.y, block.size.x, block.size.y}
 			rl.DrawRectangleLinesEx(rect, 2.0, rl.BLACK)
 		}
@@ -300,31 +299,35 @@ demo_windows :: proc(ctx: ^mu.Context, opts: ^mu.Options) {
 }
 
 all_windows :: proc(ctx: ^mu.Context) {
-	//block(ctx, true, true)
 	@(static) opts := mu.Options{.NO_CLOSE}
 
 	// Tutorial code. Comment out for final product
-	demo_windows(ctx, &opts)
+	// demo_windows(ctx, &opts)
 
-	// Program UI
-
-	// Bottom action taskbar
-	//bottom_taskbar_opts := mu.Options{.NO_INTERACT, .NO_SCROLL, .NO_CLOSE, .NO_TITLE, .ALIGN_RIGHT}
-	//bottom_taskbar_rect := mu.Rect{0, window_y - (window_y / 10), window_x, window_y / 10}
-	//if mu.window(ctx, "Lower Window", bottom_taskbar_rect, bottom_taskbar_opts) {
-	    //mu.layout_row(ctx, {120})
-		//if .SUBMIT in mu.button(ctx, "Compile and Run") {
-			//write_log("Compile and run the code!")
-	if mu.window(ctx, "Build & Flash", {40, 500, 150, 55}, {.NO_CLOSE, .NO_TITLE, .NO_RESIZE}) {
-		mu.layout_row(ctx, {130}, 0)
+	// Top action taskbar
+	top_taskbar_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_SCROLL, .NO_CLOSE, .NO_TITLE}
+	top_taskbar_rect := mu.Rect{0, 0, rl.GetScreenWidth(), rl.GetScreenHeight() / 16}
+	if mu.window(ctx, "Top Task Bar", top_taskbar_rect, top_taskbar_opts) {
+		mu.layout_row(ctx, {120, -90, -60, -30, -1})
 		if build_status == .Idle || build_status == .Done {
 			if .SUBMIT in mu.button(ctx, "Build & Flash") {
 				launch_build()
 			}
 		} else {
-			mu.label(ctx, "Building...")
+			mu.button(ctx, "Building...")
+		}
+		mu.label(ctx, "") // Empty space
+		if .SUBMIT in mu.button(ctx, "___", .NONE, mu.Options{.ALIGN_CENTER}) {
+			rl.MinimizeWindow()
+		}
+		if .SUBMIT in mu.button(ctx, "[___]", .NONE, mu.Options{.ALIGN_CENTER}) {
+			rl.MaximizeWindow()
+		}
+		if .SUBMIT in mu.button(ctx, "", .CLOSE, mu.Options{}) {
+			rl.CloseWindow()
 		}
 	}
+
 
 	if build_status == .Waiting_For_RPI {
 		popup_opts := mu.Options{.NO_CLOSE, .NO_RESIZE}
@@ -346,5 +349,26 @@ all_windows :: proc(ctx: ^mu.Context) {
 				mu.label(ctx, "Flash complete! RPI rebooting.")
 			}
 		}
+	}
+
+	// Log window
+	log_window_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_CLOSE}
+	log_window_rect := mu.Rect {
+		0, // Top left corner, under top taskbar
+		0 + top_taskbar_rect.h, // Should not intrude on top taskbar
+		rl.GetScreenWidth() / 4, // Should comprise one-quarter of the screen
+		rl.GetScreenHeight() - top_taskbar_rect.h,
+	}
+	if mu.window(ctx, "Logs", log_window_rect, log_window_opts) {
+		mu.layout_row(ctx, {-1}, -1)
+		mu.begin_panel(ctx, "Log", mu.Options{.AUTO_SIZE})
+		mu.layout_row(ctx, {-1}, -1)
+		mu.text(ctx, read_log())
+		if state.log_buf_updated {
+			panel := mu.get_current_container(ctx)
+			panel.scroll.y = panel.content_size.y
+			state.log_buf_updated = false
+		}
+		mu.end_panel(ctx)
 	}
 }

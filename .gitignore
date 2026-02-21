@@ -1,2 +1,6 @@
 /.hacked26.exe
 /hacked26.rdi
+/hacked26
+
+build/
+generated/
