@@ -309,12 +309,42 @@ all_windows :: proc(ctx: ^mu.Context) {
 	// Program UI
 
 	// Bottom action taskbar
-	bottom_taskbar_opts := mu.Options{.NO_INTERACT, .NO_SCROLL, .NO_CLOSE, .NO_TITLE, .ALIGN_RIGHT}
-	bottom_taskbar_rect := mu.Rect{0, window_y - (window_y / 10), window_x, window_y / 10}
-	if mu.window(ctx, "Lower Window", bottom_taskbar_rect, bottom_taskbar_opts) {
-	    mu.layout_row(ctx, {120})
-		if .SUBMIT in mu.button(ctx, "Compile and Run") {
-			write_log("Compile and run the code!")
+	//bottom_taskbar_opts := mu.Options{.NO_INTERACT, .NO_SCROLL, .NO_CLOSE, .NO_TITLE, .ALIGN_RIGHT}
+	//bottom_taskbar_rect := mu.Rect{0, window_y - (window_y / 10), window_x, window_y / 10}
+	//if mu.window(ctx, "Lower Window", bottom_taskbar_rect, bottom_taskbar_opts) {
+	    //mu.layout_row(ctx, {120})
+		//if .SUBMIT in mu.button(ctx, "Compile and Run") {
+			//write_log("Compile and run the code!")
+	if mu.window(ctx, "Build & Flash", {40, 500, 150, 55}, {.NO_CLOSE, .NO_TITLE, .NO_RESIZE}) {
+		mu.layout_row(ctx, {130}, 0)
+		if build_status == .Idle || build_status == .Done {
+			if .SUBMIT in mu.button(ctx, "Build & Flash") {
+				launch_build()
+			}
+		} else {
+			mu.label(ctx, "Building...")
+		}
+	}
+
+	if build_status == .Waiting_For_RPI {
+		popup_opts := mu.Options{.NO_CLOSE, .NO_RESIZE}
+		if mu.window(ctx, "RPI Popup", {300, 200, 360, 100}, popup_opts) {
+			mu.layout_row(ctx, {-1})
+			mu.label(ctx, "Plug in RPI while holding BOOT button")
+			mu.layout_row(ctx, {-1})
+			mu.label(ctx, "Waiting for device...")
+		}
+	}
+
+	if build_status == .Transferring || build_status == .Done {
+		popup_opts := mu.Options{.NO_RESIZE}
+		if mu.window(ctx, "Flash Popup", {300, 200, 300, 80}, popup_opts) {
+			mu.layout_row(ctx, {-1})
+			if build_status == .Transferring {
+				mu.label(ctx, "Transferring .uf2 to RPI...")
+			} else {
+				mu.label(ctx, "Flash complete! RPI rebooting.")
+			}
 		}
 	}
 }

@@ -46,6 +46,7 @@ BinOp :: struct {
 Expr :: union {
 	BinOp,
 	Value,
+	NativeFunctionCall,
 }
 
 Entry :: struct {}
@@ -73,6 +74,17 @@ Repeat :: struct {
 	blocks: BlockList,
 }
 
+PIO_SM_Put_Blocking :: struct {
+	pio: Value,
+	sm: Value,
+	data: Value,
+}
+
+NativeFunctionCall :: struct {
+	name: string,
+	args: []Value,
+	ret: Value,
+}
 
 Block :: struct {
 	pos : vec2,
@@ -83,11 +95,35 @@ Block :: struct {
 		Else,
 		Entry,
 		Print,
+		NativeFunctionCall,
+	},
+}
+
+NativeFunctionCallNames :: enum {
+	pio_sm_put_blocking,
+	sleep_ms,
+}
+
+native_function_calls := [NativeFunctionCallNames]NativeFunctionCall {
+	.pio_sm_put_blocking = {
+		name = "pio_sm_put_blocking",
+		args = []Value{
+			i32(0), // pio
+			i32(0), // sm
+			i32(0), // data
+		},
+		ret = Value{},
+	},
+	.sleep_ms = {
+		name = "sleep_ms",
+		args = []Value{
+			i32(0), // ms
+		},
+		ret = Value{},
 	},
 }
 
 BlockList :: list.List
-
 
 bin_op_str := [BinOpKind]string {
 	.Add          = "+",
@@ -105,6 +141,17 @@ bin_op_str := [BinOpKind]string {
 	.BitAnd       = "&",
 }
 
+// Error with the code below: args is an int but it wants a Value
+
+// write_function_call_code_gen :: proc(b: ^strings.Builder, call: ^NativeFunctionCall) {
+	// fmt.sbprintf(b, "%s(", call.name)
+	// for i, arg in call.args {
+		// write_value_code_gen(b, arg)
+		// if i < len(call.args) - 1 do strings.write_string(b, ", ")
+	// }
+	// strings.write_string(b, ")")
+// }
+
 write_value_code_gen :: proc(b: ^strings.Builder, value: Value) {
 	#partial switch val in value {
 	case i8:
@@ -121,16 +168,18 @@ write_value_code_gen :: proc(b: ^strings.Builder, value: Value) {
 	}
 }
 
-write_expr_code_gen :: proc(b: ^strings.Builder, expr: ^Expr) {
-	switch kind in expr {
-	case BinOp:
-		write_expr_code_gen(b, kind.lhs)
-		fmt.sbprintf(b, " %s ", bin_op_str[kind.kind])
-		write_expr_code_gen(b, kind.lhs)
-	case Value:
-		write_value_code_gen(b, kind)
-	}
-}
+// Need to fix switch
+
+//write_expr_code_gen :: proc(b: ^strings.Builder, expr: ^Expr) {
+	//switch kind in expr {
+	//case BinOp:
+		//write_expr_code_gen(b, kind.lhs)
+		//fmt.sbprintf(b, " %s ", bin_op_str[kind.kind])
+		//write_expr_code_gen(b, kind.lhs)
+	//case Value:
+		//write_value_code_gen(b, kind)
+	//}
+//}
 
 write_fmt_args_code_gen :: proc(b: ^strings.Builder, values: ValueList, sep := " ") {
 	strings.write_byte(b, '"')
@@ -201,6 +250,7 @@ code_gen_test :: proc() {
 	for &val in vals {
 		list.push_back(&args, &val)
 	}
+	fn_calls := [?]NativeFunctionCall{native_function_calls[.pio_sm_put_blocking], native_function_calls[.sleep_ms]}
 	print := &Block{kind = Print{args}}
 	write_block_code_gen(b, print)
 	out := strings.to_string(b^)
