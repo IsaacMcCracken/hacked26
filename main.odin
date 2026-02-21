@@ -1,9 +1,11 @@
 package vizcode
 
+when ODIN_OS != .Windows {
+	foreign import "core:c/libc"
+}
 import "core:thread"
 import "core:os"
 import "core:strings"
-import "core:c/libc"
 import "core:container/intrusive/list"
 import "core:unicode/utf8"
 import mu "vendor:microui"
@@ -42,7 +44,10 @@ BUILD_STATUS_FILE :: "/tmp/vizcode_build_status"
 FLASH_STATUS_FILE :: "/tmp/vizcode_flash_status"
 
 build_thread_proc :: proc(t: ^thread.Thread) {
-    libc.system("bash ./build.sh")
+	
+	when ODIN_OS != .Windows {
+		libc.system("bash ./build.sh")
+	}
 }
 
 flash_thread_proc :: proc(t: ^thread.Thread) {
