@@ -5,6 +5,9 @@ import "core:fmt"
 import "core:unicode/utf8"
 import mu "vendor:microui"
 import rl "vendor:raylib"
+
+vec2 :: rl.Vector2
+
 state := struct {
 	mu_ctx:           mu.Context,
 	log_buf:          [1 << 16]byte,
@@ -15,6 +18,7 @@ state := struct {
 	entities:         [1 << 15]Entity,
 	entity_alloc_pos: Index,
 	entity_free_list: Index,
+	root_blocks:	  Block^[]
 } {
 	bg = {90, 95, 100, 255},
 }
@@ -28,6 +32,7 @@ build_and_run :: proc() {
 
 main :: proc() {
 	// build_and_run()
+	code_gen_test()
 	rl.InitWindow(960, 540, "microui-odin")
 	defer rl.CloseWindow()
 
