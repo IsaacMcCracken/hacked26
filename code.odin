@@ -49,7 +49,13 @@ Expr :: union {
 	NativeFunctionCall,
 }
 
-Entry :: struct {}
+Init :: struct {
+	block: BlockList,
+}
+
+Update :: struct {
+	block: BlockList,
+}
 
 Routine :: struct {
 	args:   ValueList,
@@ -61,66 +67,45 @@ Print :: struct {
 }
 
 If :: struct {
-	cond:   Expr,
+	cond:   ^Expr,
 	blocks: BlockList,
 }
+
+ElseIf :: distinct If
 
 Else :: struct {
 	blocks: BlockList,
 }
+
 
 Repeat :: struct {
 	iters:  Value,
 	blocks: BlockList,
 }
 
+BlockKind :: union {
+	Repeat,
+	Print,
+	If,
+	ElseIf,
+	Else,
+}
+
 PIO_SM_Put_Blocking :: struct {
-	pio: Value,
-	sm: Value,
+	pio:  Value,
+	sm:   Value,
 	data: Value,
 }
 
 NativeFunctionCall :: struct {
 	name: string,
 	args: []Value,
-	ret: Value,
+	ret:  Value,
 }
 
 Block :: struct {
-	pos : vec2,
 	using link: list.Node,
-	kind:   union {
-		Repeat,
-		If,
-		Else,
-		Entry,
-		Print,
-		NativeFunctionCall,
-	},
-}
-
-NativeFunctionCallNames :: enum {
-	pio_sm_put_blocking,
-	sleep_ms,
-}
-
-native_function_calls := [NativeFunctionCallNames]NativeFunctionCall {
-	.pio_sm_put_blocking = {
-		name = "pio_sm_put_blocking",
-		args = []Value{
-			i32(0), // pio
-			i32(0), // sm
-			i32(0), // data
-		},
-		ret = Value{},
-	},
-	.sleep_ms = {
-		name = "sleep_ms",
-		args = []Value{
-			i32(0), // ms
-		},
-		ret = Value{},
-	},
+	kind:       BlockKind,
 }
 
 BlockList :: list.List
@@ -144,12 +129,12 @@ bin_op_str := [BinOpKind]string {
 // Error with the code below: args is an int but it wants a Value
 
 // write_function_call_code_gen :: proc(b: ^strings.Builder, call: ^NativeFunctionCall) {
-	// fmt.sbprintf(b, "%s(", call.name)
-	// for i, arg in call.args {
-		// write_value_code_gen(b, arg)
-		// if i < len(call.args) - 1 do strings.write_string(b, ", ")
-	// }
-	// strings.write_string(b, ")")
+// fmt.sbprintf(b, "%s(", call.name)
+// for i, arg in call.args {
+// write_value_code_gen(b, arg)
+// if i < len(call.args) - 1 do strings.write_string(b, ", ")
+// }
+// strings.write_string(b, ")")
 // }
 
 write_value_code_gen :: proc(b: ^strings.Builder, value: Value) {
@@ -170,16 +155,18 @@ write_value_code_gen :: proc(b: ^strings.Builder, value: Value) {
 
 // Need to fix switch
 
-//write_expr_code_gen :: proc(b: ^strings.Builder, expr: ^Expr) {
-	//switch kind in expr {
-	//case BinOp:
-		//write_expr_code_gen(b, kind.lhs)
-		//fmt.sbprintf(b, " %s ", bin_op_str[kind.kind])
-		//write_expr_code_gen(b, kind.lhs)
-	//case Value:
-		//write_value_code_gen(b, kind)
-	//}
-//}
+write_expr_code_gen :: proc(b: ^strings.Builder, expr: ^Expr) {
+	switch kind in expr {
+	case BinOp:
+		write_expr_code_gen(b, kind.lhs)
+		fmt.sbprintf(b, " %s ", bin_op_str[kind.kind])
+		write_expr_code_gen(b, kind.lhs)
+	case Value:
+		write_value_code_gen(b, kind)
+	case NativeFunctionCall:
+	// TODO
+	}
+}
 
 write_fmt_args_code_gen :: proc(b: ^strings.Builder, values: ValueList, sep := " ") {
 	strings.write_byte(b, '"')
@@ -216,11 +203,27 @@ write_args_code_gen :: proc(b: ^strings.Builder, args: ValueList, sep := ", ") {
 	}
 }
 
-write_block_code_gen :: proc(b: ^strings.Builder, block: ^Block) {
-	#partial switch kind in block.kind {
-	case If:
+write_init_fn_code_gen :: proc(b: ^strings.Builder, init: Init) {
+	strings.write_string(b, "void __update_fn__(void)")
+	write_block_list_code_gen(b, init.block)
+}
 
-	case Entry:
+write_block_code_gen :: proc(b: ^strings.Builder, block: ^Block) {
+	switch kind in block.kind {
+	case If:
+		strings.write_string(b, "if (")
+		write_expr_code_gen(b, kind.cond)
+		strings.write_string(b, ")\n")
+		write_block_list_code_gen(b, kind.blocks)
+	case ElseIf:
+		strings.write_string(b, "else if (")
+		write_expr_code_gen(b, kind.cond)
+		strings.write_string(b, ")\n")
+		write_block_list_code_gen(b, kind.blocks)
+	case Else:
+		strings.write_string(b, "else\n")
+		write_block_list_code_gen(b, kind.blocks)
+	case Repeat:
 
 	case Print:
 		strings.write_string(b, "printf(")
@@ -236,11 +239,16 @@ write_block_list_code_gen :: proc(
 	whitespace := "    ",
 	level := 0,
 ) {
+	for i in 0 ..< level + 1 do strings.write_string(b, whitespace)
+	strings.write_string(b, "{\n")
 	iter := list.iterator_head(blocks, Block, "link")
 	for block in list.iterate_next(&iter) {
-		for i in 0 ..< level do strings.write_string(b, whitespace)
+		for i in 0 ..< level + 1 do strings.write_string(b, whitespace)
 		write_block_code_gen(b, block)
 	}
+
+	for i in 0 ..< level + 1 do strings.write_string(b, whitespace)
+	strings.write_string(b, "}\n")
 }
 
 code_gen_test :: proc() {
@@ -250,7 +258,10 @@ code_gen_test :: proc() {
 	for &val in vals {
 		list.push_back(&args, &val)
 	}
-	fn_calls := [?]NativeFunctionCall{native_function_calls[.pio_sm_put_blocking], native_function_calls[.sleep_ms]}
+	// fn_calls := [?]NativeFunctionCall {
+	// 	native_function_calls[.pio_sm_put_blocking],
+	// 	native_function_calls[.sleep_ms],
+	// }
 	print := &Block{kind = Print{args}}
 	write_block_code_gen(b, print)
 	out := strings.to_string(b^)
