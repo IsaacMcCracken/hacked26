@@ -1,5 +1,8 @@
 package vizcode
 
+import "core:thread"
+import "core:os"
+import "core:strings"
 import "core:c/libc"
 import "core:unicode/utf8"
 import mu "vendor:microui"
@@ -26,9 +29,41 @@ state := struct {
 	bg = {90, 95, 100, 255}
 }
 
+Build_Status :: enum {
+    Idle,
+    Building,
+    Waiting_For_RPI,
+    Transferring,
+    Done,
+}
 
-build_and_run :: proc() {
-	libc.system("./build.sh")
+build_status: Build_Status = .Idle
+STATUS_FILE :: "/tmp/vizcode_build_status"
+
+build_thread_proc :: proc(t: ^thread.Thread) {
+    libc.system("bash ./build.sh")
+}
+
+launch_build :: proc() {
+    build_status = .Building
+    t := thread.create(build_thread_proc)
+    thread.start(t)
+}
+
+poll_build_status :: proc() {
+    if build_status == .Idle || build_status == .Done do return
+
+    data, ok := os.read_entire_file(STATUS_FILE)
+    if !ok do return
+    defer delete(data)
+
+    s := strings.trim_space(string(data))
+    switch s {
+    case "BUILDING":        build_status = .Building
+    case "WAITING_FOR_RPI": build_status = .Waiting_For_RPI
+    case "TRANSFERRING":    build_status = .Transferring
+    case "DONE":            build_status = .Done
+    }
 }
 
 main :: proc() {
@@ -138,6 +173,8 @@ main :: proc() {
 				mu.input_key_up(ctx, key.mu_key)
 			}
 		}
+		
+		poll_build_status();
 
 		mu.begin(ctx)
 		all_windows(ctx)
