@@ -9,6 +9,10 @@ import rl "vendor:raylib"
 render_blocks :: proc(blocks: ^[dynamic]^UI_Block) {
 	for block in blocks {
 		rl.DrawRectangleV(block.pos, block.size, rl.RED)
+		if (block.hovered) {
+			rect := rl.Rectangle{block.pos.x, block.pos.y, block.size.x, block.size.y}
+			rl.DrawRectangleLinesEx(rect, 2.0, rl.BLACK)
+		}
 	}
 }
 
@@ -305,8 +309,12 @@ all_windows :: proc(ctx: ^mu.Context) {
 	top_taskbar_rect := mu.Rect{0, 0, rl.GetScreenWidth(), rl.GetScreenHeight() / 16}
 	if mu.window(ctx, "Top Task Bar", top_taskbar_rect, top_taskbar_opts) {
 		mu.layout_row(ctx, {120, -90, -60, -30, -1})
-		if .SUBMIT in mu.button(ctx, "Compile and Run") {
-			write_log("Compile and run the code!")
+		if build_status == .Idle || build_status == .Done {
+			if .SUBMIT in mu.button(ctx, "Build & Flash") {
+				launch_build()
+			}
+		} else {
+			mu.label(ctx, "Building...")
 		}
 		mu.label(ctx, "") // Empty space
 		if .SUBMIT in mu.button(ctx, "___", .NONE, mu.Options{.ALIGN_CENTER}) {
@@ -320,18 +328,41 @@ all_windows :: proc(ctx: ^mu.Context) {
 		}
 	}
 
+
+	if build_status == .Waiting_For_RPI {
+		popup_opts := mu.Options{.NO_CLOSE, .NO_RESIZE}
+		if mu.window(ctx, "RPI Popup", {300, 200, 360, 100}, popup_opts) {
+			mu.layout_row(ctx, {-1})
+			mu.label(ctx, "Plug in RPI while holding BOOT button")
+			mu.layout_row(ctx, {-1})
+			mu.label(ctx, "Waiting for device...")
+		}
+	}
+
+	if build_status == .Transferring || build_status == .Done {
+		popup_opts := mu.Options{.NO_RESIZE}
+		if mu.window(ctx, "Flash Popup", {300, 200, 300, 80}, popup_opts) {
+			mu.layout_row(ctx, {-1})
+			if build_status == .Transferring {
+				mu.label(ctx, "Transferring .uf2 to RPI...")
+			} else {
+				mu.label(ctx, "Flash complete! RPI rebooting.")
+			}
+		}
+	}
+
 	// Log window
 	log_window_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_CLOSE}
 	log_window_rect := mu.Rect {
 		0, // Top left corner, under top taskbar
 		0 + top_taskbar_rect.h, // Should not intrude on top taskbar
 		rl.GetScreenWidth() / 4, // Should comprise one-quarter of the screen
-		rl.GetScreenHeight() - top_taskbar_rect.h, 
-	} 
+		rl.GetScreenHeight() - top_taskbar_rect.h,
+	}
 	if mu.window(ctx, "Logs", log_window_rect, log_window_opts) {
-	    mu.layout_row(ctx, {-1}, -1)
-    	mu.begin_panel(ctx, "Log", mu.Options{.AUTO_SIZE})
-        mu.layout_row(ctx, {-1}, -1)
+		mu.layout_row(ctx, {-1}, -1)
+		mu.begin_panel(ctx, "Log", mu.Options{.AUTO_SIZE})
+		mu.layout_row(ctx, {-1}, -1)
 		mu.text(ctx, read_log())
 		if state.log_buf_updated {
 			panel := mu.get_current_container(ctx)

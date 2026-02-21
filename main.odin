@@ -1,5 +1,8 @@
 package vizcode
 
+import "core:thread"
+import "core:os"
+import "core:strings"
 import "core:c/libc"
 import "core:container/intrusive/list"
 import "core:unicode/utf8"
@@ -9,11 +12,6 @@ import rl "vendor:raylib"
 vec2 :: rl.Vector2
 
 import ui "ui"
-
-UI_Block :: struct {
-	pos:  vec2,
-	size: vec2,
-}
 
 state := struct {
 	mu_ctx:             mu.Context,
@@ -31,38 +29,51 @@ state := struct {
 	bg = {90, 95, 100, 255},
 }
 
-
-build_and_run :: proc() {
-	libc.system("./build.sh")
+Build_Status :: enum {
+    Idle,
+    Building,
+    Waiting_For_RPI,
+    Transferring,
+    Done,
 }
 
-init_test_ui :: proc(blocks: ^[dynamic]^UI_Block) {
-	// Create and add 3 root blocks
-	b1 := new(UI_Block)
-	b2 := new(UI_Block)
-	b3 := new(UI_Block)
-	b1^ = UI_Block {
-		pos  = {25, 25},
-		size = {100, 100},
-	}
-	b2^ = UI_Block {
-		pos  = {200, 25},
-		size = {50, 50},
-	}
-	b3^ = UI_Block {
-		pos  = {300, 25},
-		size = {50, 75},
-	}
+build_status: Build_Status = .Idle
+STATUS_FILE :: "/tmp/vizcode_build_status"
 
-	append(blocks, b1, b2, b3)
+build_thread_proc :: proc(t: ^thread.Thread) {
+    libc.system("bash ./build.sh")
 }
 
+launch_build :: proc() {
+    build_status = .Building
+    t := thread.create(build_thread_proc)
+    thread.start(t)
+}
+
+poll_build_status :: proc() {
+    if build_status == .Idle || build_status == .Done do return
+
+    data, ok := os.read_entire_file(STATUS_FILE)
+    if !ok do return
+    defer delete(data)
+
+    s := strings.trim_space(string(data))
+    switch s {
+    case "BUILDING":        build_status = .Building
+    case "WAITING_FOR_RPI": build_status = .Waiting_For_RPI
+    case "TRANSFERRING":    build_status = .Transferring
+    case "DONE":            build_status = .Done
+    }
+}
 
 main :: proc() {
-	// build_and_run()
 	code_gen_test()
-	init_test_ui(&state.ui_blocks)
-	rl.InitWindow(initial_window_x, initial_window_y, "microui-odin")
+
+	// Initialize Editor Context
+	editor_state := Editor_State{}
+	init_editor(&editor_state)
+
+	rl.InitWindow(960, 540, "microui-odin")
 	defer rl.CloseWindow()
 
 	pixels := make([][4]u8, mu.DEFAULT_ATLAS_WIDTH * mu.DEFAULT_ATLAS_HEIGHT)
@@ -97,7 +108,17 @@ main :: proc() {
 
 	repeatBlock := &Block{kind = g}
 
-	main_loop: for !rl.WindowShouldClose() {
+	main_loop: for !rl.WindowShouldClose()
+	{
+		// mouse coordinates
+		mouse_pos := [2]i32{rl.GetMouseX(), rl.GetMouseY()}
+		mu.input_mouse_move(ctx, mouse_pos.x, mouse_pos.y)
+		mu.input_scroll(ctx, 0, i32(rl.GetMouseWheelMove() * -30))
+
+		// Update Editor 
+		update_editor(&editor_state, rl.GetMousePosition())
+
+
 		{ 	// text input
 			text_input: [512]byte = ---
 			text_input_offset := 0
@@ -113,10 +134,6 @@ main :: proc() {
 			mu.input_text(ctx, string(text_input[:text_input_offset]))
 		}
 
-		// mouse coordinates
-		mouse_pos := [2]i32{rl.GetMouseX(), rl.GetMouseY()}
-		mu.input_mouse_move(ctx, mouse_pos.x, mouse_pos.y)
-		mu.input_scroll(ctx, 0, i32(rl.GetMouseWheelMove() * -30))
 
 		// mouse buttons
 		@(static) buttons_to_key := [?]struct {
@@ -154,11 +171,13 @@ main :: proc() {
 				mu.input_key_up(ctx, key.mu_key)
 			}
 		}
+		
+		poll_build_status();
 
 		mu.begin(ctx)
 		all_windows(ctx)
 		mu.end(ctx)
 
-		render(ctx, &state.ui_blocks)
+		render(ctx, &editor_state.ui_blocks)
 	}
 }
