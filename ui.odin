@@ -302,7 +302,7 @@ all_windows :: proc(ctx: ^mu.Context) {
 
 	// Top action taskbar
 	bottom_taskbar_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_SCROLL, .NO_CLOSE, .NO_TITLE}
-	bottom_taskbar_rect := mu.Rect{0, 0, window_x, window_y / 10}
+	bottom_taskbar_rect := mu.Rect{0, 0, rl.GetScreenWidth(), rl.GetScreenHeight() / 10}
 	if mu.window(ctx, "Lower Window", bottom_taskbar_rect, bottom_taskbar_opts) {
 		mu.layout_row(ctx, {120})
 		if .SUBMIT in mu.button(ctx, "Compile and Run") {
@@ -315,8 +315,8 @@ all_windows :: proc(ctx: ^mu.Context) {
 	log_window_rect := mu.Rect {
 		0, // Top left corner, under top taskbar
 		0 + bottom_taskbar_rect.h, // Should not intrude on top taskbar
-		window_x / 4, // Should comprise one-quarter of the screen
-		window_y - bottom_taskbar_rect.h, 
+		rl.GetScreenWidth() / 4, // Should comprise one-quarter of the screen
+		rl.GetScreenHeight() - bottom_taskbar_rect.h, 
 	} 
 	if mu.window(ctx, "Logs", log_window_rect, log_window_opts) {
 	    mu.layout_row(ctx, {-1}, -1)
