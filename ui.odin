@@ -299,17 +299,38 @@ all_windows :: proc(ctx: ^mu.Context) {
 	@(static) opts := mu.Options{.NO_CLOSE}
 
 	// Tutorial code. Comment out for final product
-	demo_windows(ctx, &opts)
+	// demo_windows(ctx, &opts)
 
 	// Program UI
 
 	// Bottom action taskbar
-	bottom_taskbar_opts := mu.Options{.NO_INTERACT, .NO_SCROLL, .NO_CLOSE, .NO_TITLE, .ALIGN_RIGHT}
+	bottom_taskbar_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_SCROLL, .NO_CLOSE, .NO_TITLE}
 	bottom_taskbar_rect := mu.Rect{0, window_y - (window_y / 10), window_x, window_y / 10}
 	if mu.window(ctx, "Lower Window", bottom_taskbar_rect, bottom_taskbar_opts) {
-	    mu.layout_row(ctx, {120})
+		mu.layout_row(ctx, {120})
 		if .SUBMIT in mu.button(ctx, "Compile and Run") {
 			write_log("Compile and run the code!")
 		}
+	}
+
+	// Log window
+	log_window_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_CLOSE}
+	log_window_rect := mu.Rect {
+		0, // Top left corner
+		0,
+		window_x / 4, // Should comprise one-quarter of the screen
+		window_y - bottom_taskbar_rect.h, // Should not intrude on taskbar
+	} 
+	if mu.window(ctx, "Logs", log_window_rect, log_window_opts) {
+	    mu.layout_row(ctx, {-1}, -1)
+    	mu.begin_panel(ctx, "Log", mu.Options{.AUTO_SIZE})
+        mu.layout_row(ctx, {-1}, -1)
+		mu.text(ctx, read_log())
+		if state.log_buf_updated {
+			panel := mu.get_current_container(ctx)
+			panel.scroll.y = panel.content_size.y
+			state.log_buf_updated = false
+		}
+		mu.end_panel(ctx)
 	}
 }
