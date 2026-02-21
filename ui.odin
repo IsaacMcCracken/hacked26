@@ -314,7 +314,7 @@ all_windows :: proc(ctx: ^mu.Context) {
 				launch_build()
 			}
 		} else {
-			mu.label(ctx, "Building...")
+			mu.button(ctx, "Building...")
 		}
 		mu.label(ctx, "") // Empty space
 		if .SUBMIT in mu.button(ctx, "___", .NONE, mu.Options{.ALIGN_CENTER}) {
