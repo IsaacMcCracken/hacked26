@@ -124,7 +124,7 @@ block :: proc(ctx: ^mu.Context, hover: bool, show_snap_target: bool) {
 				g = 150,
 				b = 200,
 				a = 255,
-			} 	// light blue
+			} // light blue
 
 			mu.begin_panel(ctx, "Snap Target")
 			mu.end_panel(ctx)
@@ -304,16 +304,12 @@ all_windows :: proc(ctx: ^mu.Context) {
 	// Program UI
 
 	// Bottom action taskbar
-	bottom_taskbar_opts := mu.Options{mu.Opt.NO_CLOSE, mu.Opt.NO_INTERACT}
-	bottom_taskbar_rect := mu.Rect{0, window_y - (window_y / 10), window_x, window_y / 10} 
-	if mu.window(
-		ctx,
-		"Lower Window",
-		bottom_taskbar_rect,
-		bottom_taskbar_opts,
-	) {
-		mu.begin_panel(ctx, "Action Taskbar", opts)
-
-		mu.end_panel(ctx)
+	bottom_taskbar_opts := mu.Options{.NO_INTERACT, .NO_SCROLL, .NO_CLOSE, .NO_TITLE, .ALIGN_RIGHT}
+	bottom_taskbar_rect := mu.Rect{0, window_y - (window_y / 10), window_x, window_y / 10}
+	if mu.window(ctx, "Lower Window", bottom_taskbar_rect, bottom_taskbar_opts) {
+	    mu.layout_row(ctx, {120})
+		if .SUBMIT in mu.button(ctx, "Compile and Run") {
+			write_log("Compile and run the code!")
+		}
 	}
 }
