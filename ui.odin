@@ -9,6 +9,11 @@ import rl "vendor:raylib"
 render_blocks :: proc(blocks: ^[dynamic]^UI_Block) {
 	for block in blocks {
 		rl.DrawRectangleV(block.pos, block.size, rl.RED)
+		if (block.hovered)
+		{
+			rect := rl.Rectangle{block.pos.x, block.pos.y, block.size.x, block.size.y}
+			rl.DrawRectangleLinesEx(rect, 2.0, rl.BLACK)
+		}
 	}
 }
 
