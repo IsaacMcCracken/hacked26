@@ -10,11 +10,6 @@ vec2 :: rl.Vector2
 
 import ui "ui"
 
-UI_Block :: struct {
-	pos  : vec2,
-	size : vec2
-}
-
 state := struct {
 	mu_ctx:           mu.Context,
 	log_buf:          [1 << 16]byte,
@@ -37,25 +32,15 @@ build_and_run :: proc() {
 	libc.system("./game")
 }
 
-init_test_ui :: proc(blocks: ^[dynamic]^UI_Block)
-{
-	// Create and add 3 root blocks
-	b1 := new(UI_Block)
-	b2 := new(UI_Block)
-	b3 := new(UI_Block)
-	b1^ = UI_Block{pos = {25, 25},	size = {100, 100}}
-	b2^ = UI_Block{pos = {200, 25}, size = {50, 50}}
-	b3^ = UI_Block{pos = {300, 25}, size = {50, 75}}
-
-	append(blocks, b1, b2, b3)
-}
-
-
-
 main :: proc() {
 	// build_and_run()
 	code_gen_test()
-	init_test_ui(&state.ui_blocks)
+
+
+	// Initialize Editor Context
+	editor_state := Editor_State{}
+	init_editor(&editor_state)
+
 	rl.InitWindow(960, 540, "microui-odin")
 	defer rl.CloseWindow()
 
@@ -93,6 +78,15 @@ main :: proc() {
 
 	main_loop: for !rl.WindowShouldClose()
 	{
+		// mouse coordinates
+		mouse_pos := [2]i32{rl.GetMouseX(), rl.GetMouseY()}
+		mu.input_mouse_move(ctx, mouse_pos.x, mouse_pos.y)
+		mu.input_scroll(ctx, 0, i32(rl.GetMouseWheelMove() * -30))
+
+		// Update Editor 
+		update_editor(&editor_state, rl.GetMousePosition())
+
+
 		{ 	// text input
 			text_input: [512]byte = ---
 			text_input_offset := 0
@@ -108,10 +102,6 @@ main :: proc() {
 			mu.input_text(ctx, string(text_input[:text_input_offset]))
 		}
 
-		// mouse coordinates
-		mouse_pos := [2]i32{rl.GetMouseX(), rl.GetMouseY()}
-		mu.input_mouse_move(ctx, mouse_pos.x, mouse_pos.y)
-		mu.input_scroll(ctx, 0, i32(rl.GetMouseWheelMove() * -30))
 
 		// mouse buttons
 		@(static) buttons_to_key := [?]struct {
@@ -154,6 +144,6 @@ main :: proc() {
 		all_windows(ctx)
 		mu.end(ctx)
 
-		render(ctx, &state.ui_blocks)
+		render(ctx, &editor_state.ui_blocks)
 	}
 }
