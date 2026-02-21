@@ -24,10 +24,17 @@ UI_Kind_Render_Data :: struct {
 	input_types: []typeid,
 }
 
+UI_Block_Kind :: enum {
+	If,
+	Else,
+	While,
+}
+
 
 UI_Block :: struct {
 	using link: list.Node,
 	text:       small_array.Small_Array(32, u8),
+	input:      ^UI_Block,
 	pos:        vec2,
 	size:       vec2,
 	hovered:    bool,
