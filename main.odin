@@ -18,7 +18,7 @@ state := struct {
 	entities:         [1 << 15]Entity,
 	entity_alloc_pos: Index,
 	entity_free_list: Index,
-	root_blocks:	  Block^[]
+	root_blocks:	  [dynamic]^Block
 }
 
 import ui "ui"

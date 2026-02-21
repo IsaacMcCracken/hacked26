@@ -75,6 +75,7 @@ Repeat :: struct {
 
 
 Block :: struct {
+	pos : vec2,
 	using link: list.Node,
 	kind:       union {
 		If,
