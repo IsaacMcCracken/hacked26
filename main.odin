@@ -33,8 +33,7 @@ state := struct {
 
 
 build_and_run :: proc() {
-	libc.system("gcc -o game helloworld.c")
-	libc.system("./game")
+	libc.system("./build.sh")
 }
 
 init_test_ui :: proc(blocks: ^[dynamic]^UI_Block)
