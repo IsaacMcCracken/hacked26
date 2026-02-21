@@ -19,6 +19,20 @@ state := struct {
 	entity_alloc_pos: Index,
 	entity_free_list: Index,
 	root_blocks:	  Block^[]
+}
+
+import ui "ui"
+
+state := struct {
+	mu_ctx:              mu.Context,
+	log_buf:             [1 << 16]byte,
+	log_buf_len:         int,
+	log_buf_updated:     bool,
+	bg:                  mu.Color,
+	atlas_texture:       rl.Texture2D,
+	components:          [1 << 15]ui.Component,
+	component_alloc_pos: ui.Index,
+	component_free_list: ui.Index,
 } {
 	bg = {90, 95, 100, 255},
 }
