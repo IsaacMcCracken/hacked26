@@ -6,19 +6,15 @@ import "core:unicode/utf8"
 import mu "vendor:microui"
 import rl "vendor:raylib"
 
-render_blocks :: proc(blocks: ^[dynamic]^UI_Block)
-{
-	for block in blocks
-	{
+render_blocks :: proc(blocks: ^[dynamic]^UI_Block) {
+	for block in blocks {
 		rl.DrawRectangleV(block.pos, block.size, rl.RED)
 	}
 }
 
-render :: proc(ctx: ^mu.Context, ui_blocks: ^[dynamic]^UI_Block)
-{
+render :: proc(ctx: ^mu.Context, ui_blocks: ^[dynamic]^UI_Block) {
 	// Renders glyphs, icons on the texture atlas.
-	render_texture :: proc(rect: mu.Rect, pos: [2]i32, color: mu.Color)
-	{
+	render_texture :: proc(rect: mu.Rect, pos: [2]i32, color: mu.Color) {
 		source := rl.Rectangle{f32(rect.x), f32(rect.y), f32(rect.w), f32(rect.h)}
 		position := rl.Vector2{f32(pos.x), f32(pos.y)}
 
@@ -36,8 +32,7 @@ render :: proc(ctx: ^mu.Context, ui_blocks: ^[dynamic]^UI_Block)
 	render_blocks(ui_blocks)
 
 	command_backing: ^mu.Command
-	for variant in mu.next_command_iterator(ctx, &command_backing)
-	{
+	for variant in mu.next_command_iterator(ctx, &command_backing) {
 		switch cmd in variant {
 		case ^mu.Command_Text:
 			pos := [2]i32{cmd.pos.x, cmd.pos.y}
@@ -97,38 +92,39 @@ reset_log :: proc() {
 }
 
 
-block :: proc(ctx: ^mu.Context, hover: bool, show_snap_target: bool)
-{
+block :: proc(ctx: ^mu.Context, hover: bool, show_snap_target: bool) {
 	@(static) opts := mu.Options{.NO_CLOSE, .NO_TITLE, .NO_RESIZE, .NO_SCROLL, .AUTO_SIZE}
-	if mu.window(ctx, "block", {10, 10, 120, 100}, opts)
-	{
+	if mu.window(ctx, "block", {10, 10, 120, 100}, opts) {
 		@(static) buf: [128]byte
 		@(static) buf_len: int
 		mu.layout_row(ctx, {50, 70})
-		mu.label(ctx, "Repeat:");
-		if .SUBMIT in mu.textbox(ctx, buf[:], &buf_len)
-		{
+		mu.label(ctx, "Repeat:")
+		if .SUBMIT in mu.textbox(ctx, buf[:], &buf_len) {
 
 			mu.set_focus(ctx, ctx.last_id)
 		}
 
 
-		if (hover) { ctx.style.colors[.BORDER] = mu.Color{255, 0, 0, 255} }
+		if (hover) {ctx.style.colors[.BORDER] = mu.Color{255, 0, 0, 255}}
 		mu.layout_row(ctx, {-1}, 100)
 		mu.begin_panel(ctx, "Log")
-		ctx.style.colors[.BORDER] = mu.Color{25, 25, 25, 255} // default 
+		ctx.style.colors[.BORDER] = mu.Color{25, 25, 25, 255} // default
 		mu.end_panel(ctx)
 
 
-		if show_snap_target
-		{
+		if show_snap_target {
 			mu.layout_row(ctx, {-1}, 20)
 
 			// Save old window background color
 			old_bg := ctx.style.colors[.WINDOW_BG]
 
 			// Set your custom color (RGBA)
-			ctx.style.colors[.WINDOW_BG] = mu.Color{r=50, g=150, b=200, a=255}  // light blue
+			ctx.style.colors[.WINDOW_BG] = mu.Color {
+				r = 50,
+				g = 150,
+				b = 200,
+				a = 255,
+			} // light blue
 
 			mu.begin_panel(ctx, "Snap Target")
 			mu.end_panel(ctx)
@@ -139,13 +135,8 @@ block :: proc(ctx: ^mu.Context, hover: bool, show_snap_target: bool)
 	}
 }
 
-all_windows :: proc(ctx: ^mu.Context)
-{
-	//block(ctx, true, true)
-	@(static) opts := mu.Options{.NO_CLOSE}
-
-	if mu.window(ctx, "Demo Window", {40, 40, 300, 450}, opts)
-	{
+demo_windows :: proc(ctx: ^mu.Context, opts: ^mu.Options) {
+	if mu.window(ctx, "Demo Window", {40, 40, 300, 450}, opts^) {
 		if .ACTIVE in mu.header(ctx, "Window Info") {
 			win := mu.get_current_container(ctx)
 			mu.layout_row(ctx, {54, -1}, 0)
@@ -158,12 +149,12 @@ all_windows :: proc(ctx: ^mu.Context)
 		if .ACTIVE in mu.header(ctx, "Window Options") {
 			mu.layout_row(ctx, {120, 120, 120}, 0)
 			for opt in mu.Opt {
-				state := opt in opts
+				state := opt in opts^
 				if .CHANGE in mu.checkbox(ctx, fmt.tprintf("%v", opt), &state) {
 					if state {
-						opts += {opt}
+						opts^ += {opt}
 					} else {
-						opts -= {opt}
+						opts^ -= {opt}
 					}
 				}
 			}
@@ -243,7 +234,7 @@ all_windows :: proc(ctx: ^mu.Context)
 		}
 	}
 
-	if mu.window(ctx, "Log Window", {350, 40, 300, 200}, opts) {
+	if mu.window(ctx, "Log Window", {350, 40, 300, 200}, opts^) {
 		mu.layout_row(ctx, {-1}, -28)
 		mu.begin_panel(ctx, "Log")
 		mu.layout_row(ctx, {-1}, -1)
@@ -301,12 +292,24 @@ all_windows :: proc(ctx: ^mu.Context)
 			mu.draw_rect(ctx, mu.layout_next(ctx), ctx.style.colors[col])
 		}
 	}
+}
 
-	if mu.window(ctx, "Build & Run", {40, 500, 200, 60}, {.NO_CLOSE, .NO_TITLE, .NO_RESIZE}) {
-		mu.layout_row(ctx, {120}, 0)
-		if .SUBMIT in mu.button(ctx, "Build & Run") {
-			build_and_run()
+all_windows :: proc(ctx: ^mu.Context) {
+	//block(ctx, true, true)
+	@(static) opts := mu.Options{.NO_CLOSE}
+
+	// Tutorial code. Comment out for final product
+	demo_windows(ctx, &opts)
+
+	// Program UI
+
+	// Bottom action taskbar
+	bottom_taskbar_opts := mu.Options{.NO_INTERACT, .NO_SCROLL, .NO_CLOSE, .NO_TITLE, .ALIGN_RIGHT}
+	bottom_taskbar_rect := mu.Rect{0, window_y - (window_y / 10), window_x, window_y / 10}
+	if mu.window(ctx, "Lower Window", bottom_taskbar_rect, bottom_taskbar_opts) {
+	    mu.layout_row(ctx, {120})
+		if .SUBMIT in mu.button(ctx, "Compile and Run") {
+			write_log("Compile and run the code!")
 		}
 	}
-
 }
