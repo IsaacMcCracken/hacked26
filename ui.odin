@@ -298,6 +298,8 @@ demo_windows :: proc(ctx: ^mu.Context, opts: ^mu.Options) {
 	}
 }
 
+// ---------- NON TUTORIAL CODE BELOW ---------- //
+
 taskbar_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 	if mu.window(ctx, "Top Task Bar", rect^, opts^) {
 		mu.layout_row(ctx, {120, -90, -60, -30, -1})
@@ -372,13 +374,13 @@ log_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 	}
 }
 
-// ---------- NON TUTORIAL CODE BELOW ---------- //
+editor_camera := rl.Camera2D{
+    
+}
 
-dummy_editor :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+dummy_editor_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 	if mu.window(ctx, "Editor", rect^, opts^) {
-		// mu.begin_panel(ctx, "Editor Space")
-		
-		// mu.end_panel(ctx)
+	    rl.BeginMode2D(editor_camera)
 	}
 }
 
@@ -416,6 +418,9 @@ all_windows :: proc(ctx: ^mu.Context) {
 		rl.GetScreenWidth() - (log_window_rect.x + log_window_rect.w), // Remaining width
 		rl.GetScreenHeight() - (taskbar_window_rect.y + taskbar_window_rect.h), // Remaining height
 	}
-	dummy_editor(ctx, &editor_window_rect, &editor_window_opts)
+	// THE EDITOR WINDOW SHOULD BE DEFINED USING THIS WINDOW.
+	// IMPORT THE EDITOR WINDOW-CREATING FUNCTION LOGIC WITH THE PARAMETERS:
+	// editor_window(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options)
+	dummy_editor_window(ctx, &editor_window_rect, &editor_window_opts)
 
 }
