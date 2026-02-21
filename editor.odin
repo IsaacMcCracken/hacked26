@@ -1,7 +1,9 @@
 package vizcode
 
 import "core:container/intrusive/list"
+import "core:container/small_array"
 import "core:fmt"
+import "core:math/bits"
 import rl "vendor:raylib"
 
 Editor_State :: struct {
@@ -9,8 +11,23 @@ Editor_State :: struct {
 	mouse_pos: vec2,
 }
 
+UI_Kind_Flags :: bit_set[UI_Kind_Flag;u8]
+UI_Kind_Flag :: enum {
+	Pregnable,
+	Name,
+	Input,
+}
+
+UI_Kind_Render_Data :: struct {
+	name:        string,
+	flags:       UI_Kind_Flags,
+	input_types: []typeid,
+}
+
+
 UI_Block :: struct {
 	using link: list.Node,
+	text:       small_array.Small_Array(32, u8),
 	pos:        vec2,
 	size:       vec2,
 	hovered:    bool,
