@@ -6,9 +6,19 @@ import "core:unicode/utf8"
 import mu "vendor:microui"
 import rl "vendor:raylib"
 
+render_blocks :: proc(blocks: ^[dynamic]^UI_Block)
+{
+	for block in blocks
+	{
+		rl.DrawRectangleV(block.pos, block.size, rl.RED)
+	}
+}
 
-render :: proc(ctx: ^mu.Context) {
-	render_texture :: proc(rect: mu.Rect, pos: [2]i32, color: mu.Color) {
+render :: proc(ctx: ^mu.Context, ui_blocks: ^[dynamic]^UI_Block)
+{
+	// Renders glyphs, icons on the texture atlas.
+	render_texture :: proc(rect: mu.Rect, pos: [2]i32, color: mu.Color)
+	{
 		source := rl.Rectangle{f32(rect.x), f32(rect.y), f32(rect.w), f32(rect.h)}
 		position := rl.Vector2{f32(pos.x), f32(pos.y)}
 
@@ -23,8 +33,11 @@ render :: proc(ctx: ^mu.Context) {
 	rl.BeginScissorMode(0, 0, rl.GetScreenWidth(), rl.GetScreenHeight())
 	defer rl.EndScissorMode()
 
+	render_blocks(ui_blocks)
+
 	command_backing: ^mu.Command
-	for variant in mu.next_command_iterator(ctx, &command_backing) {
+	for variant in mu.next_command_iterator(ctx, &command_backing)
+	{
 		switch cmd in variant {
 		case ^mu.Command_Text:
 			pos := [2]i32{cmd.pos.x, cmd.pos.y}
@@ -54,6 +67,7 @@ render :: proc(ctx: ^mu.Context) {
 			unreachable()
 		}
 	}
+
 }
 
 
@@ -83,10 +97,55 @@ reset_log :: proc() {
 }
 
 
-all_windows :: proc(ctx: ^mu.Context) {
+block :: proc(ctx: ^mu.Context, hover: bool, show_snap_target: bool)
+{
+	@(static) opts := mu.Options{.NO_CLOSE, .NO_TITLE, .NO_RESIZE, .NO_SCROLL, .AUTO_SIZE}
+	if mu.window(ctx, "block", {10, 10, 120, 100}, opts)
+	{
+		@(static) buf: [128]byte
+		@(static) buf_len: int
+		mu.layout_row(ctx, {50, 70})
+		mu.label(ctx, "Repeat:");
+		if .SUBMIT in mu.textbox(ctx, buf[:], &buf_len)
+		{
+
+			mu.set_focus(ctx, ctx.last_id)
+		}
+
+
+		if (hover) { ctx.style.colors[.BORDER] = mu.Color{255, 0, 0, 255} }
+		mu.layout_row(ctx, {-1}, 100)
+		mu.begin_panel(ctx, "Log")
+		ctx.style.colors[.BORDER] = mu.Color{25, 25, 25, 255} // default 
+		mu.end_panel(ctx)
+
+
+		if show_snap_target
+		{
+			mu.layout_row(ctx, {-1}, 20)
+
+			// Save old window background color
+			old_bg := ctx.style.colors[.WINDOW_BG]
+
+			// Set your custom color (RGBA)
+			ctx.style.colors[.WINDOW_BG] = mu.Color{r=50, g=150, b=200, a=255}  // light blue
+
+			mu.begin_panel(ctx, "Snap Target")
+			mu.end_panel(ctx)
+
+			// Restore previous color
+			ctx.style.colors[.WINDOW_BG] = old_bg
+		}
+	}
+}
+
+all_windows :: proc(ctx: ^mu.Context)
+{
+	//block(ctx, true, true)
 	@(static) opts := mu.Options{.NO_CLOSE}
 
-	if mu.window(ctx, "Demo Window", {40, 40, 300, 450}, opts) {
+	if mu.window(ctx, "Demo Window", {40, 40, 300, 450}, opts)
+	{
 		if .ACTIVE in mu.header(ctx, "Window Info") {
 			win := mu.get_current_container(ctx)
 			mu.layout_row(ctx, {54, -1}, 0)
