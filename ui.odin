@@ -302,4 +302,11 @@ all_windows :: proc(ctx: ^mu.Context)
 		}
 	}
 
+	if mu.window(ctx, "Build & Run", {40, 500, 200, 60}, {.NO_CLOSE, .NO_TITLE, .NO_RESIZE}) {
+		mu.layout_row(ctx, {120}, 0)
+		if .SUBMIT in mu.button(ctx, "Build & Run") {
+			build_and_run()
+		}
+	}
+
 }
