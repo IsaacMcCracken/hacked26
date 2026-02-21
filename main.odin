@@ -1,7 +1,11 @@
 package vizcode
 
 when ODIN_OS != .Windows {
-	foreign import "core:c/libc"
+    foreign import libc "system:c"
+    
+    foreign libc {
+        system :: proc(command: cstring) -> i32 ---
+    }
 }
 import "core:thread"
 import "core:os"
@@ -44,14 +48,15 @@ BUILD_STATUS_FILE :: "/tmp/vizcode_build_status"
 FLASH_STATUS_FILE :: "/tmp/vizcode_flash_status"
 
 build_thread_proc :: proc(t: ^thread.Thread) {
-	
-	when ODIN_OS != .Windows {
-		libc.system("bash ./build.sh")
-	}
+    when ODIN_OS != .Windows {
+        system("bash ./build.sh")
+    }
 }
 
 flash_thread_proc :: proc(t: ^thread.Thread) {
-    libc.system("bash ./flash.sh")
+    when ODIN_OS != .Windows {
+        system("bash ./flash.sh")
+    }
 }
 
 launch_build :: proc() {
