@@ -6,9 +6,17 @@ import "core:unicode/utf8"
 import mu "vendor:microui"
 import rl "vendor:raylib"
 
-
-render :: proc(ctx: ^mu.Context)
+render_blocks :: proc(blocks: ^[dynamic]^UI_Block)
 {
+	for block in blocks
+	{
+		rl.DrawRectangleV(block.pos, block.size, rl.RED)
+	}
+}
+
+render :: proc(ctx: ^mu.Context, ui_blocks: ^[dynamic]^UI_Block)
+{
+	// Renders glyphs, icons on the texture atlas.
 	render_texture :: proc(rect: mu.Rect, pos: [2]i32, color: mu.Color)
 	{
 		source := rl.Rectangle{f32(rect.x), f32(rect.y), f32(rect.w), f32(rect.h)}
@@ -24,6 +32,8 @@ render :: proc(ctx: ^mu.Context)
 
 	rl.BeginScissorMode(0, 0, rl.GetScreenWidth(), rl.GetScreenHeight())
 	defer rl.EndScissorMode()
+
+	render_blocks(ui_blocks)
 
 	command_backing: ^mu.Command
 	for variant in mu.next_command_iterator(ctx, &command_backing)
@@ -58,7 +68,6 @@ render :: proc(ctx: ^mu.Context)
 		}
 	}
 
-	rl.DrawRectangle(500, 100, 120, 60, rl.RED)
 }
 
 
@@ -132,7 +141,7 @@ block :: proc(ctx: ^mu.Context, hover: bool, show_snap_target: bool)
 
 all_windows :: proc(ctx: ^mu.Context)
 {
-	block(ctx, true, true)
+	//block(ctx, true, true)
 	@(static) opts := mu.Options{.NO_CLOSE}
 
 	if mu.window(ctx, "Demo Window", {40, 40, 300, 450}, opts)

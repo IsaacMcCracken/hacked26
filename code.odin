@@ -77,7 +77,8 @@ Repeat :: struct {
 Block :: struct {
 	pos : vec2,
 	using link: list.Node,
-	kind:       union {
+	kind:   union {
+		Repeat,
 		If,
 		Else,
 		Entry,
@@ -167,7 +168,7 @@ write_args_code_gen :: proc(b: ^strings.Builder, args: ValueList, sep := ", ") {
 }
 
 write_block_code_gen :: proc(b: ^strings.Builder, block: ^Block) {
-	switch kind in block.kind {
+	#partial switch kind in block.kind {
 	case If:
 
 	case Entry:

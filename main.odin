@@ -1,12 +1,19 @@
 package vizcode
 
 import "core:c/libc"
-import "core:fmt"
 import "core:unicode/utf8"
 import mu "vendor:microui"
 import rl "vendor:raylib"
+import "core:container/intrusive/list"
 
 vec2 :: rl.Vector2
+
+import ui "ui"
+
+UI_Block :: struct {
+	pos  : vec2,
+	size : vec2
+}
 
 state := struct {
 	mu_ctx:           mu.Context,
@@ -15,26 +22,13 @@ state := struct {
 	log_buf_updated:  bool,
 	bg:               mu.Color,
 	atlas_texture:    rl.Texture2D,
-	entities:         [1 << 15]Entity,
-	entity_alloc_pos: Index,
-	entity_free_list: Index,
-	root_blocks:	  [dynamic]^Block
-}
-
-import ui "ui"
-
-state := struct {
-	mu_ctx:              mu.Context,
-	log_buf:             [1 << 16]byte,
-	log_buf_len:         int,
-	log_buf_updated:     bool,
-	bg:                  mu.Color,
-	atlas_texture:       rl.Texture2D,
-	components:          [1 << 15]ui.Component,
-	component_alloc_pos: ui.Index,
-	component_free_list: ui.Index,
+	entities:         [1 << 15]ui.Component,
+	entity_alloc_pos: ui.Index,
+	entity_free_list: ui.Index,
+	root_blocks:	  [dynamic]^Block,
+	ui_blocks:		  [dynamic]^UI_Block
 } {
-	bg = {90, 95, 100, 255},
+	bg = {90, 95, 100, 255}
 }
 
 
@@ -43,10 +37,25 @@ build_and_run :: proc() {
 	libc.system("./game")
 }
 
+init_test_ui :: proc(blocks: ^[dynamic]^UI_Block)
+{
+	// Create and add 3 root blocks
+	b1 := new(UI_Block)
+	b2 := new(UI_Block)
+	b3 := new(UI_Block)
+	b1^ = UI_Block{pos = {25, 25},	size = {100, 100}}
+	b2^ = UI_Block{pos = {200, 25}, size = {50, 50}}
+	b3^ = UI_Block{pos = {300, 25}, size = {50, 75}}
+
+	append(blocks, b1, b2, b3)
+}
+
+
 
 main :: proc() {
 	// build_and_run()
 	code_gen_test()
+	init_test_ui(&state.ui_blocks)
 	rl.InitWindow(960, 540, "microui-odin")
 	defer rl.CloseWindow()
 
@@ -73,7 +82,17 @@ main :: proc() {
 	ctx.text_height = mu.default_atlas_text_height
 
 	rl.SetTargetFPS(60)
-	main_loop: for !rl.WindowShouldClose() {
+
+	g := Repeat{};
+	printBlockA := &Block{}
+	printBlockB := &Block{}
+	list.push_back(&g.blocks, printBlockA)
+	list.push_back(&g.blocks, printBlockB)
+
+	repeatBlock := &Block{kind=g}
+
+	main_loop: for !rl.WindowShouldClose()
+	{
 		{ 	// text input
 			text_input: [512]byte = ---
 			text_input_offset := 0
@@ -135,6 +154,6 @@ main :: proc() {
 		all_windows(ctx)
 		mu.end(ctx)
 
-		render(ctx)
+		render(ctx, &state.ui_blocks)
 	}
 }
