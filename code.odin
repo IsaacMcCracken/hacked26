@@ -48,7 +48,13 @@ Expr :: union {
 	Value,
 }
 
-Entry :: struct {}
+Init :: struct {
+	block: BlockList,
+}
+
+Update :: struct {
+	block: BlockList,
+}
 
 Routine :: struct {
 	args:   ValueList,
@@ -60,12 +66,21 @@ Print :: struct {
 }
 
 If :: struct {
-	cond:   Expr,
+	cond:   ^Expr,
 	blocks: BlockList,
 }
 
+ElseIf :: distinct If
+
 Else :: struct {
 	blocks: BlockList,
+}
+
+UI_Flags :: bit_set[UI_Flag;u8]
+UI_Flag :: enum {
+	Pregnable,
+	Hovered,
+	Selected,
 }
 
 Repeat :: struct {
@@ -73,17 +88,17 @@ Repeat :: struct {
 	blocks: BlockList,
 }
 
+BlockKind :: union {
+	Repeat,
+	Print,
+	If,
+	ElseIf,
+	Else,
+}
 
 Block :: struct {
-	pos : vec2,
 	using link: list.Node,
-	kind:   union {
-		Repeat,
-		If,
-		Else,
-		Entry,
-		Print,
-	},
+	kind:       BlockKind,
 }
 
 BlockList :: list.List
@@ -167,11 +182,27 @@ write_args_code_gen :: proc(b: ^strings.Builder, args: ValueList, sep := ", ") {
 	}
 }
 
-write_block_code_gen :: proc(b: ^strings.Builder, block: ^Block) {
-	#partial switch kind in block.kind {
-	case If:
+write_init_fn_code_gen :: proc(b: ^strings.Builder, init: Init) {
+	strings.write_string(b, "void __update_fn__(void)")
+	write_block_list_code_gen(b, init.block)
+}
 
-	case Entry:
+write_block_code_gen :: proc(b: ^strings.Builder, block: ^Block) {
+	switch kind in block.kind {
+	case If:
+		strings.write_string(b, "if (")
+		write_expr_code_gen(b, kind.cond)
+		strings.write_string(b, ")\n")
+		write_block_list_code_gen(b, kind.blocks)
+	case ElseIf:
+		strings.write_string(b, "else if (")
+		write_expr_code_gen(b, kind.cond)
+		strings.write_string(b, ")\n")
+		write_block_list_code_gen(b, kind.blocks)
+	case Else:
+		strings.write_string(b, "else\n")
+		write_block_list_code_gen(b, kind.blocks)
+	case Repeat:
 
 	case Print:
 		strings.write_string(b, "printf(")
@@ -187,11 +218,16 @@ write_block_list_code_gen :: proc(
 	whitespace := "    ",
 	level := 0,
 ) {
+	for i in 0 ..< level + 1 do strings.write_string(b, whitespace)
+	strings.write_string(b, "{\n")
 	iter := list.iterator_head(blocks, Block, "link")
 	for block in list.iterate_next(&iter) {
-		for i in 0 ..< level do strings.write_string(b, whitespace)
+		for i in 0 ..< level + 1 do strings.write_string(b, whitespace)
 		write_block_code_gen(b, block)
 	}
+
+	for i in 0 ..< level + 1 do strings.write_string(b, whitespace)
+	strings.write_string(b, "}\n")
 }
 
 code_gen_test :: proc() {
