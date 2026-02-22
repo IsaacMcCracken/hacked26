@@ -293,19 +293,13 @@ demo_windows :: proc(ctx: ^mu.Context, opts: ^mu.Options) {
 	}
 }
 
-all_windows :: proc(ctx: ^mu.Context) {
-	@(static) opts := mu.Options{.NO_CLOSE}
+// ---------- NON TUTORIAL CODE BELOW ---------- //
 
-	// Tutorial code. Comment out for final product
-	// demo_windows(ctx, &opts)
-
-	// Top action taskbar
-	top_taskbar_opts := mu.Options{.NO_RESIZE, .NO_SCROLL, .NO_CLOSE, .NO_TITLE}
-	top_taskbar_rect := mu.Rect{0, 0, rl.GetScreenWidth(), rl.GetScreenHeight() / 16}
-	if mu.window(ctx, "Top Task Bar", top_taskbar_rect, top_taskbar_opts) {
+taskbar_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+	if mu.window(ctx, "Top Task Bar", rect^, opts^) {
 		mu.layout_row(ctx, {100, 100, -90, -60, -30, -1})
 		if build_status == .Idle {
-			if .SUBMIT in mu.button(ctx, "Build") {
+			if .SUBMIT in mu.button(ctx, "Build & Flash") {
 				launch_build()
 			}
 		} else {
@@ -329,29 +323,46 @@ all_windows :: proc(ctx: ^mu.Context) {
 			rl.CloseWindow()
 		}
 	}
+}
 
-	// Popup only shown while waiting for RPI to be plugged in
-	rpi_popup_opts := mu.Options{.NO_CLOSE, .NO_RESIZE}
-	if mu.window(ctx, "RPI Popup", {300, 200, 360, 100}, rpi_popup_opts) {
-		mu.layout_row(ctx, {-1})
-		mu.label(ctx, "Plug in RPI while holding BOOT button")
-		mu.layout_row(ctx, {-1})
-		mu.label(ctx, "Waiting for device...")
+// Create and render a popup displayed when:
+// - the build is complete and waiting for RPI connection.
+build_waiting_RPI_popup :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+	if build_status == .Waiting_For_RPI {
+		if mu.window(ctx, "RPI Popup", rect^, opts^) {
+			mu.layout_row(ctx, {-1})
+			mu.label(ctx, "Plug in RPI while holding BOOT button")
+			mu.layout_row(ctx, {-1})
+			mu.label(ctx, "Waiting for device...")
+		}
 	}
-	rpi_popup := mu.get_container(ctx, "RPI Popup")
-	if rpi_popup != nil {
-		rpi_popup.open = flash_status == .Waiting_For_RPI
-	}
+}
 
-	// Log window
-	log_window_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_CLOSE}
-	log_window_rect := mu.Rect {
-		0, // Top left corner, under top taskbar
-		0 + top_taskbar_rect.h, // Should not intrude on top taskbar
-		rl.GetScreenWidth() / 4, // Should comprise one-quarter of the screen
-		rl.GetScreenHeight() - top_taskbar_rect.h,
-	}
-	if mu.window(ctx, "Logs", log_window_rect, log_window_opts) {
+// Create and render a popup displayed when
+// - the built artifact is being transferred to the RPI device.
+// build_transferring_popup :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+// 	if build_status == .Transferring {
+// 		if mu.window(ctx, "Flash Popup", rect^, opts^) {
+// 			mu.layout_row(ctx, {-1})
+// 			mu.label(ctx, "Transferring .uf2 to RPI...")
+// 		}
+// 	}
+// }
+
+// Create and render a popup displayed when
+// - the built artifact has been successfully transferred to the RPI device.
+// build_done_popup :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+// 	if build_status == .Done {
+// 		if mu.window(ctx, "Flash Popup", rect^, opts^) {
+// 			mu.layout_row(ctx, {-1})
+// 			mu.label(ctx, "Flash complete! RPI rebooting.")
+// 		}
+// 	}
+// }
+
+
+log_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+	if mu.window(ctx, "Logs", rect^, opts^) {
 		mu.layout_row(ctx, {-1}, -1)
 		mu.begin_panel(ctx, "Log", mu.Options{.AUTO_SIZE})
 		mu.layout_row(ctx, {-1}, -1)
@@ -363,4 +374,73 @@ all_windows :: proc(ctx: ^mu.Context) {
 		}
 		mu.end_panel(ctx)
 	}
+}
+
+editor_camera := rl.Camera2D{
+    
+}
+
+@(private="file")
+// Convert a microui Rect to a new raylib Rectangle
+// 
+// mu.Rect -> rl.Rectangle
+rect_to_rectangle :: proc(rect: ^mu.Rect) -> rl.Rectangle {
+    rectangle := rl.Rectangle{
+        f32(rect.x),
+        f32(rect.y),
+        f32(rect.w),
+        f32(rect.h)
+    }
+    return rectangle
+}
+
+dummy_editor_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+    rl.BeginDrawing()
+	if mu.window(ctx, "Editor", rect^, opts^) {
+		rl.DrawRectangleRec(rect_to_rectangle(rect), rl.MAGENTA)
+	}
+	// Causes flashing in renders
+	// rl.EndDrawing()
+
+}
+
+all_windows :: proc(ctx: ^mu.Context) {
+	taskbar_window_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_SCROLL, .NO_CLOSE, .NO_TITLE}
+	taskbar_window_rect := mu.Rect{0, 0, rl.GetScreenWidth(), rl.GetScreenHeight() / 16}
+	taskbar_window(ctx, &taskbar_window_rect, &taskbar_window_opts)
+
+	build_waiting_RPI_popup_rect := mu.Rect{300, 200, 360, 100}
+	build_waiting_RPI_popup_opts := mu.Options{.NO_CLOSE, .NO_RESIZE}
+	build_waiting_RPI_popup(ctx, &build_waiting_RPI_popup_rect, &build_waiting_RPI_popup_opts)
+
+	// build_transferring_popup_rect := mu.Rect{300, 200, 300, 80}
+	// build_transferring_popup_opts := mu.Options{.NO_RESIZE}
+	// build_transferring_popup(ctx, &build_transferring_popup_rect, &build_transferring_popup_opts)
+
+	// build_done_popup_rect := build_transferring_popup_rect
+	// build_done_popup_opts := build_transferring_popup_opts
+	// build_done_popup(ctx, &build_done_popup_rect, &build_done_popup_opts)
+
+	log_window_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_CLOSE}
+	log_window_rect := mu.Rect {
+		0, // Top left corner, under top taskbar
+		0 + taskbar_window_rect.h, // Should not intrude on top taskbar
+		rl.GetScreenWidth() / 4, // Should comprise one-quarter of the screen
+		rl.GetScreenHeight() - taskbar_window_rect.h,
+	}
+	log_window(ctx, &log_window_rect, &log_window_opts)
+
+	editor_window_opts := mu.Options{.NO_FRAME, .NO_RESIZE, .NO_CLOSE, .NO_TITLE}
+	// Consume the remainder of the screen space
+	editor_window_rect := mu.Rect {
+		log_window_rect.x + log_window_rect.w, // Left-bounded by logging window
+		taskbar_window_rect.y + taskbar_window_rect.h, // Upper-bounded by taskbar
+		rl.GetScreenWidth() - (log_window_rect.x + log_window_rect.w), // Remaining width
+		rl.GetScreenHeight() - (taskbar_window_rect.y + taskbar_window_rect.h), // Remaining height
+	}
+	// THE EDITOR WINDOW SHOULD BE DEFINED USING THIS WINDOW.
+	// IMPORT THE EDITOR WINDOW-CREATING FUNCTION LOGIC WITH THE PARAMETERS:
+	// editor_window(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options)
+	dummy_editor_window(ctx, &editor_window_rect, &editor_window_opts)
+
 }
