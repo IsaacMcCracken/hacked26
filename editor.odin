@@ -123,10 +123,10 @@ get_hovered_block :: proc(
 	return h, d
 }
 
-find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State) -> ^UI_Block {
+find_hovered_block :: proc(state: ^Editor_State) -> ^UI_Block {
 	// Find the foremost hovered block
 	first_hovered: ^UI_Block
-	loopy: for block in root_blocks {
+	loopy: for block in state.ui_blocks {
 		hovered_block, depth := get_hovered_block(block, state)
 		if (hovered_block != nil) {
 			first_hovered = hovered_block
@@ -163,8 +163,8 @@ ui_render_pass :: proc(s: ^Editor_State) {
 		}
 		rl.DrawRectangleRec(rec, rl.DARKGRAY)
 		outlineColor := rl.RAYWHITE
-		if (b == s.hovered_block) { outlineColor = rl.BLACK }
-		if (b.selected) { outlineColor = rl.YELLOW}
+		if (b == s.hovered_block) {outlineColor = rl.BLACK}
+		if (b.selected) {outlineColor = rl.YELLOW}
 		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
 
 		if .Pregnable in data.flags {
@@ -252,7 +252,7 @@ select_block :: proc(s: ^Editor_State) {
 			list.remove(&s.selected_block.parent.children, s.selected_block)
 			s.selected_block.parent = nil
 		} else {
-		    // The block is a root block. Before we move it to the back of the dynamic array,
+			// The block is a root block. Before we move it to the back of the dynamic array,
 			// we need to delete the pointer to that root block and increment the rest of the
 			// dynamic array.
 			for c_i := 0; c_i < len(s.ui_blocks); c_i += 1 {
@@ -262,7 +262,7 @@ select_block :: proc(s: ^Editor_State) {
 				}
 			}
 		}
-  		// Move the block to the back of the dynamic array
+		// Move the block to the back of the dynamic array
 		append(&s.ui_blocks, s.selected_block)
 	}
 }
@@ -281,7 +281,7 @@ update_editor :: proc(state: ^Editor_State, mouse_pos: vec2, mouse_left_down: bo
 	ui_layout_pass(state)
 
 	// TODO(rordon): selection pass
-	state.hovered_block = find_hovered_block(&state.ui_blocks, state)
+	state.hovered_block = find_hovered_block(state)
 	if (state.selected_block != nil) {
 		state.selected_block.pos = mouse_pos + state.selected_offset
 	}
