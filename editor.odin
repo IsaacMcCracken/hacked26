@@ -60,7 +60,7 @@ ui_kind_data := [UI_Block_Kind]UI_Kind_Data {
 	.None = {name = ""},
 	.If = {name = "IF", flags = {.Siblingable, .Pregnable, .Input, .Name}},
 	.Else = {name = "ELSE", flags = {.Siblingable, .Pregnable, .Name}},
-	.While = {name = "IF", flags = {.Siblingable, .Pregnable, .Input, .Name}},
+	.While = {name = "IF", flags = {.Siblingable, .Pregnable, .Input, .Name}, input_types = {i32}},
 }
 
 push_child_block :: proc(parent, child: ^UI_Block) {
@@ -203,8 +203,8 @@ ui_render_pass :: proc(s: ^Editor_State) {
 		}
 		rl.DrawRectangleRec(rec, rl.DARKGRAY)
 		outlineColor := rl.RAYWHITE
-		if (b == s.hovered_block) { outlineColor = rl.BLACK }
-		if (b.selected) { outlineColor = rl.YELLOW}
+		if (b == s.hovered_block) {outlineColor = rl.BLACK}
+		if (b.selected) {outlineColor = rl.YELLOW}
 		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
 
 		if .Pregnable in data.flags {
