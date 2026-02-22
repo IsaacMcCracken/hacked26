@@ -127,13 +127,12 @@ get_hovered_block :: proc(
 }
 
 find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State) -> ^UI_Block {
-	// check each root block for selection
+	// Find the foremost hovered block
 	first_hovered: ^UI_Block
 	loopy: for block in root_blocks {
 		hovered_block, depth := get_hovered_block(block, state)
 		if (hovered_block != nil) {
 			first_hovered = hovered_block
-			break loopy
 		}
 	}
 
