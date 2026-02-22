@@ -17,20 +17,16 @@ import rl "vendor:raylib"
 
 vec2 :: rl.Vector2
 
-import ui "ui"
 
 state := struct {
-	mu_ctx:           mu.Context,
-	log_buf:          [1 << 16]byte,
-	log_buf_len:      int,
-	log_buf_updated:  bool,
-	bg:               mu.Color,
-	atlas_texture:    rl.Texture2D,
-	entities:         [1 << 15]ui.Component,
-	entity_alloc_pos: ui.Index,
-	entity_free_list: ui.Index,
-	root_blocks:      [dynamic]^Block,
-	ui_blocks:        [dynamic]^UI_Block,
+	mu_ctx:          mu.Context,
+	log_buf:         [1 << 16]byte,
+	log_buf_len:     int,
+	log_buf_updated: bool,
+	bg:              mu.Color,
+	atlas_texture:   rl.Texture2D,
+	root_blocks:     [dynamic]^Block,
+	ui_blocks:       [dynamic]^UI_Block,
 } {
 	bg = {90, 95, 100, 255},
 }
