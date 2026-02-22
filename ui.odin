@@ -376,26 +376,18 @@ log_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 	}
 }
 
-editor_camera := rl.Camera2D{
-    
-}
 
-@(private="file")
+@(private = "file")
 // Convert a microui Rect to a new raylib Rectangle
-// 
+//
 // mu.Rect -> rl.Rectangle
 rect_to_rectangle :: proc(rect: ^mu.Rect) -> rl.Rectangle {
-    rectangle := rl.Rectangle{
-        f32(rect.x),
-        f32(rect.y),
-        f32(rect.w),
-        f32(rect.h)
-    }
-    return rectangle
+	rectangle := rl.Rectangle{f32(rect.x), f32(rect.y), f32(rect.w), f32(rect.h)}
+	return rectangle
 }
 
 dummy_editor_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
-    rl.BeginDrawing()
+	rl.BeginDrawing()
 	if mu.window(ctx, "Editor", rect^, opts^) {
 		rl.DrawRectangleRec(rect_to_rectangle(rect), rl.MAGENTA)
 	}
