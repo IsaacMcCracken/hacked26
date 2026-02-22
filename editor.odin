@@ -5,11 +5,25 @@ import "core:container/small_array"
 import "core:fmt"
 import rl "vendor:raylib"
 
+DEFAULT_LINE_WIDTH :: 1
 DEFAULT_SPACE :: 2
 DEFAULT_SIZE :: vec2{200, 30}
-DEFAULT_MARGIN :: 15
-DEFAULT_TEXT_MARGIN :: vec2{10, 0}
-DEFAULT_PREGNALBE_SIZE :: vec2{DEFAULT_SIZE.x, DEFAULT_SIZE.y + 2 * DEFAULT_MARGIN}
+DEFAULT_TOP_MARGIN :: 20
+DEFAULT_BOT_MARGIN :: 10
+DEFAULT_TEXT_MARGIN :: vec2{10, 2}
+DEFAULT_CHILD_MARGIN :: 15
+DEFAULT_PREGNALBE_SIZE :: vec2 {
+	DEFAULT_SIZE.x,
+	DEFAULT_SIZE.y + DEFAULT_TOP_MARGIN + DEFAULT_BOT_MARGIN,
+}
+DEFAULT_SNAP_TARGET_SIZE :: vec2{DEFAULT_SIZE.x, DEFAULT_SIZE.y/3}
+
+DEFAULT_BASE_COLOR :: rl.Color{60, 56, 54, 255}
+DEFAULT_OUTLINE_COLOR :: rl.Color{70, 60, 58, 255}
+DEFAULT_PREG_COLOR :: rl.Color{30, 26, 22, 255}
+DEFAULT_TEXT_COLOR :: rl.Color{215, 153, 33, 255}
+DEFAULT_HOVER_COLOR :: rl.Color{142, 192, 124, 255}
+DEFAULT_SELECTED_COLOR :: rl.Color{69, 133, 136, 255}
 
 Editor_State :: struct {
 	ui_blocks: [dynamic]^UI_Block,
@@ -41,6 +55,12 @@ UI_Block_Kind :: enum {
 	While,
 }
 
+UI_Interaction_Flags :: bit_set[UI_Interaction_Flag;u8]
+UI_Interaction_Flag :: enum {
+	Selected,
+	Hovered,
+	InsertHover,
+}
 
 UI_Block :: struct {
 	using link: list.Node,
@@ -49,8 +69,7 @@ UI_Block :: struct {
 	kind:       UI_Block_Kind,
 	pos:        vec2,
 	size:       vec2,
-	hovered:    bool,
-	selected:   bool,
+	flags: UI_Interaction_Flags,
 	children:   list.List,
 	parent:     ^UI_Block,
 }
@@ -108,7 +127,9 @@ get_hovered_block :: proc(
 	d := base_depth
 
 	// Check if self is hovered
-	block.hovered = false
+	block.flags |= {.Hovered}
+
+
 	if (mouse_in_block(block, s.mouse_pos)) {
 		h = block
 	}
@@ -138,7 +159,7 @@ find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_Stat
 	}
 
 	if (first_hovered != nil) {
-		first_hovered.hovered = true
+		first_hovered.flags |= {.Hovered}
 	}
 
 	return first_hovered
@@ -153,8 +174,8 @@ ui_pregnable_rec :: proc(b: ^UI_Block) -> rl.Rectangle {
 	}
 
 	return rl.Rectangle {
-		x = rec.x + DEFAULT_MARGIN,
-		y = rec.y + DEFAULT_MARGIN,
+		x = rec.x + DEFAULT_CHILD_MARGIN,
+		y = rec.y + DEFAULT_TOP_MARGIN,
 		width = DEFAULT_SIZE.x,
 		height = DEFAULT_SIZE.y,
 	}
@@ -169,16 +190,15 @@ ui_render_pass :: proc(s: ^Editor_State) {
 			width  = b.size.x,
 			height = b.size.y,
 		}
-		rl.DrawRectangleRec(rec, rl.DARKGRAY)
-		outlineColor := rl.RAYWHITE
-		if (b.hovered) { outlineColor = rl.BLACK }
-		if (b.selected) { outlineColor = rl.YELLOW}
-		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
+		base_color := DEFAULT_BASE_COLOR
+		outlineColor := DEFAULT_OUTLINE_COLOR
+		rl.DrawRectangleRec(rec, base_color)
+		rl.DrawRectangleLinesEx(rec, DEFAULT_LINE_WIDTH, outlineColor)
 
 		if .Pregnable in data.flags {
 			preg_rec := ui_pregnable_rec(b)
 			rl.DrawRectangleRec(preg_rec, {40, 40, 40, 255})
-			rl.DrawRectangleLinesEx(preg_rec, 2, outlineColor)
+			rl.DrawRectangleLinesEx(preg_rec, DEFAULT_LINE_WIDTH, outlineColor)
 
 		}
 
@@ -188,7 +208,7 @@ ui_render_pass :: proc(s: ^Editor_State) {
 		}
 
 		if .Name in data.flags {
-			render_text(data.name, b.pos + DEFAULT_TEXT_MARGIN, outlineColor)
+			render_text(data.name, b.pos + DEFAULT_TEXT_MARGIN, DEFAULT_TEXT_COLOR)
 		}
 	}
 
@@ -206,10 +226,10 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 
 		// if it has a parent we change the size
 		if p != nil {
-			b.pos.x = p.pos.x + DEFAULT_MARGIN
+			b.pos.x = p.pos.x + DEFAULT_TOP_MARGIN
 			prev := transmute(^UI_Block)b.prev
 			if prev == nil {
-				b.pos.y = p.pos.y + DEFAULT_MARGIN
+				b.pos.y = p.pos.y + DEFAULT_TOP_MARGIN
 			} else {
 				b.pos.y = prev.pos.y + prev.size.y + DEFAULT_SPACE
 			}
@@ -226,7 +246,7 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 
 			tail := transmute(^UI_Block)b.children.tail
 			rel := tail.pos - b.pos
-			b.size.y = rel.y + tail.size.y + DEFAULT_MARGIN
+			b.size.y = rel.y + tail.size.y + DEFAULT_BOT_MARGIN
 		} else {
 			if .Pregnable in data.flags {
 				b.size = DEFAULT_PREGNALBE_SIZE
@@ -242,7 +262,7 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 
 set_selected :: proc (block: ^UI_Block, value: bool)
 {
-	block.selected = value
+	block.flags |= value
 
 	iter := list.iterator_head(block.children, UI_Block, "link")
 	for child in list.iterate_next(&iter)
@@ -250,6 +270,7 @@ set_selected :: proc (block: ^UI_Block, value: bool)
 		set_selected(child, value)
 	}
 }
+
 // Selected a hovered block
 select_block :: proc(s: ^Editor_State)
 {
@@ -259,29 +280,28 @@ select_block :: proc(s: ^Editor_State)
 		set_selected(s.selected_block, true)
 		if (s.selected_block.parent != nil)
 		{
-			list.remove(&s.selected_block.parent.children, s.selected_block) 
+			list.remove(&s.selected_block.parent.children, s.selected_block)
 			s.selected_block.parent = nil
 			append(&s.ui_blocks, s.selected_block)
 		}
 	}
-}
+// }
 
 unselect_block :: proc(s: ^Editor_State)
 {
 	if (s.selected_block != nil)
 	{
 		set_selected(s.selected_block, false)
-		s.selected_block = nil 
+		s.selected_block = nil
 	}
 }
 
 
+
 update_editor :: proc(state: ^Editor_State, mouse_pos: vec2, mouse_left_down: bool) {
 	state.mouse_pos = mouse_pos
-	// TODO(rordon): layout pass
-	ui_layout_pass(state)
 
-	// TODO(rordon): selection pass
+	ui_layout_pass(state)
 	state.hovered_block = find_hovered_block(&state.ui_blocks, state)
 
 	if (mouse_left_down)
@@ -292,4 +312,5 @@ update_editor :: proc(state: ^Editor_State, mouse_pos: vec2, mouse_left_down: bo
 	{
 		unselect_block(state)
 	}
+	// TODO(rordon): layout pass
 }
