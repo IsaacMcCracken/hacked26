@@ -281,6 +281,18 @@ set_selected :: proc(block: ^UI_Block, value: bool) {
 	}
 }
 
+remove_root_block :: proc(s: ^Editor_State, b: ^UI_Block)
+{
+	for c_i := 0; c_i < len(s.ui_blocks); c_i += 1
+	{
+		if (s.ui_blocks[c_i] == b)
+		{
+			ordered_remove(&s.ui_blocks, c_i)
+			break
+		}
+	}
+}
+
 // Selected a hovered block
 select_block :: proc(s: ^Editor_State) {
 	if (s.hovered_block != nil && s.selected_block == nil) {
@@ -295,12 +307,7 @@ select_block :: proc(s: ^Editor_State) {
 		    // The block is a root block. Before we move it to the back of the dynamic array,
 			// we need to delete the pointer to that root block and increment the rest of the
 			// dynamic array.
-			for c_i := 0; c_i < len(s.ui_blocks); c_i += 1 {
-				if (s.ui_blocks[c_i] == s.selected_block) {
-					ordered_remove(&s.ui_blocks, c_i)
-					break
-				}
-			}
+			remove_root_block(s, s.selected_block)
 		}
   		// Move the block to the back of the dynamic array
 		append(&s.ui_blocks, s.selected_block)
@@ -317,8 +324,8 @@ unselect_block :: proc(s: ^Editor_State)
 		if (preg_block != nil)
 		{
 			// put selected block in preg_block
-			// push_child_block(preg_block, s.selected_block)
-			// ordered_remove(s.ui_blocks, s.selected_block)
+			push_child_block(preg_block, s.selected_block)
+			remove_root_block(s, s.selected_block)
 		}
 		set_selected(s.selected_block, false)
 		s.selected_block = nil
