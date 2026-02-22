@@ -386,10 +386,31 @@ rect_to_rectangle :: proc(rect: ^mu.Rect) -> rl.Rectangle {
 	return rectangle
 }
 
+@(private = "file")
+// Draw a grid with a given colour, throughout a given Rectangle.
+// More customizable than rl.DrawGrid
+draw_coloured_rectangle_grid :: proc(rectangle: rl.Rectangle, spacing: f32, color: rl.Color) {
+	for i := rectangle.x; i < rectangle.x + rectangle.width; i += spacing {
+		rl.DrawLineV(
+			rl.Vector2{i, rectangle.y},
+			rl.Vector2{i, rectangle.y + rectangle.height},
+			color,
+		)
+	}
+	for i := rectangle.y; i < rectangle.y + rectangle.height; i += spacing {
+		rl.DrawLineV(
+			rl.Vector2{rectangle.x, i},
+			rl.Vector2{rectangle.x + rectangle.width, i},
+			color,
+		)
+	}
+}
+
 dummy_editor_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 	rl.BeginDrawing()
 	if mu.window(ctx, "Editor", rect^, opts^) {
-		rl.DrawRectangleRec(rect_to_rectangle(rect), rl.MAGENTA)
+		rl.DrawRectangleRec(rect_to_rectangle(rect), rl.BLACK)
+		draw_coloured_rectangle_grid(rect_to_rectangle(rect), 16, rl.DARKGRAY)
 	}
 	// Causes flashing in renders
 	// rl.EndDrawing()
