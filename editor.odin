@@ -12,11 +12,11 @@ DEFAULT_TEXT_MARGIN :: vec2{10, 0}
 DEFAULT_PREGNABLE_SIZE :: vec2{DEFAULT_SIZE.x, DEFAULT_SIZE.y + 2 * DEFAULT_MARGIN}
 
 Editor_State :: struct {
-	ui_blocks: [dynamic]^UI_Block,
-	mouse_pos: vec2,
-	hovered_block: ^UI_Block,
-	selected_block: ^UI_Block,
-	selected_offset: vec2
+	ui_blocks:       [dynamic]^UI_Block,
+	mouse_pos:       vec2,
+	hovered_block:   ^UI_Block,
+	selected_block:  ^UI_Block,
+	selected_offset: vec2,
 }
 
 
@@ -123,15 +123,13 @@ get_hovered_block :: proc(
 	return h, d
 }
 
-find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State) -> ^UI_Block
-{
-	// check each root block for selection
+find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State) -> ^UI_Block {
+	// Find the foremost hovered block
 	first_hovered: ^UI_Block
 	loopy: for block in root_blocks {
 		hovered_block, depth := get_hovered_block(block, state)
 		if (hovered_block != nil) {
 			first_hovered = hovered_block
-			break loopy
 		}
 	}
 
@@ -234,40 +232,45 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 	}
 }
 
-set_selected :: proc (block: ^UI_Block, value: bool)
-{
+set_selected :: proc(block: ^UI_Block, value: bool) {
 	block.selected = value
 
 	iter := list.iterator_head(block.children, UI_Block, "link")
-	for child in list.iterate_next(&iter)
-	{
+	for child in list.iterate_next(&iter) {
 		set_selected(child, value)
 	}
 }
+
 // Selected a hovered block
-select_block :: proc(s: ^Editor_State)
-{
-	if (s.hovered_block != nil && s.selected_block == nil)
-	{
+select_block :: proc(s: ^Editor_State) {
+	if (s.hovered_block != nil && s.selected_block == nil) {
 		s.selected_block = s.hovered_block
 		set_selected(s.selected_block, true)
 		offset := s.selected_block.pos - s.mouse_pos
 		s.selected_offset = offset
-		if (s.selected_block.parent != nil)
-		{
-			list.remove(&s.selected_block.parent.children, s.selected_block) 
+		if (s.selected_block.parent != nil) {
+			list.remove(&s.selected_block.parent.children, s.selected_block)
 			s.selected_block.parent = nil
-			append(&s.ui_blocks, s.selected_block)
+		} else {
+		    // The block is a root block. Before we move it to the back of the dynamic array,
+			// we need to delete the pointer to that root block and increment the rest of the
+			// dynamic array.
+			for c_i := 0; c_i < len(s.ui_blocks); c_i += 1 {
+				if (s.ui_blocks[c_i] == s.selected_block) {
+					ordered_remove(&s.ui_blocks, c_i)
+					break
+				}
+			}
 		}
+  		// Move the block to the back of the dynamic array
+		append(&s.ui_blocks, s.selected_block)
 	}
 }
 
-unselect_block :: proc(s: ^Editor_State)
-{
-	if (s.selected_block != nil)
-	{
+unselect_block :: proc(s: ^Editor_State) {
+	if (s.selected_block != nil) {
 		set_selected(s.selected_block, false)
-		s.selected_block = nil 
+		s.selected_block = nil
 	}
 }
 
@@ -279,17 +282,13 @@ update_editor :: proc(state: ^Editor_State, mouse_pos: vec2, mouse_left_down: bo
 
 	// TODO(rordon): selection pass
 	state.hovered_block = find_hovered_block(&state.ui_blocks, state)
-	if (state.selected_block != nil)
-	{
+	if (state.selected_block != nil) {
 		state.selected_block.pos = mouse_pos + state.selected_offset
 	}
 
-	if (mouse_left_down)
-	{
+	if (mouse_left_down) {
 		select_block(state)
-	}
-	else if (state.selected_block != nil)
-	{
+	} else if (state.selected_block != nil) {
 		unselect_block(state)
 	}
 }
