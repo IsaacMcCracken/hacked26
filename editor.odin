@@ -50,7 +50,6 @@ UI_Block :: struct {
 	kind:       UI_Block_Kind,
 	pos:        vec2,
 	size:       vec2,
-	hovered:    bool,
 	selected:   bool,
 	children:   list.List,
 	parent:     ^UI_Block,
@@ -108,8 +107,6 @@ get_hovered_block :: proc(
 	// Depth of lowest hovered block
 	d := base_depth
 
-	// Check if self is hovered
-	block.hovered = false
 	if (mouse_in_block(block, s.mouse_pos)) {
 		h = block
 	}
@@ -134,10 +131,6 @@ find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_Stat
 		if (hovered_block != nil) {
 			first_hovered = hovered_block
 		}
-	}
-
-	if (first_hovered != nil) {
-		first_hovered.hovered = true
 	}
 
 	return first_hovered
@@ -170,8 +163,8 @@ ui_render_pass :: proc(s: ^Editor_State) {
 		}
 		rl.DrawRectangleRec(rec, rl.DARKGRAY)
 		outlineColor := rl.RAYWHITE
-		if (b.hovered) {outlineColor = rl.BLACK}
-		if (b.selected) {outlineColor = rl.YELLOW}
+		if (b == s.hovered_block) { outlineColor = rl.BLACK }
+		if (b.selected) { outlineColor = rl.YELLOW}
 		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
 
 		if .Pregnable in data.flags {
