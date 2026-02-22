@@ -55,10 +55,10 @@ UI_Block :: struct {
 
 
 ui_kind_data := [UI_Block_Kind]UI_Kind_Data {
-	.None = {},
-	.If = {name = "if", flags = {.Siblingable, .Pregnable, .Input, .Name}},
-	.Else = {name = "else", flags = {.Siblingable, .Pregnable, .Name}},
-	.While = {name = "if", flags = {.Siblingable, .Pregnable, .Input, .Name}},
+	.None = {name = ""},
+	.If = {name = "IF", flags = {.Siblingable, .Pregnable, .Input, .Name}},
+	.Else = {name = "ELSE", flags = {.Siblingable, .Pregnable, .Name}},
+	.While = {name = "IF", flags = {.Siblingable, .Pregnable, .Input, .Name}},
 }
 
 push_child_block :: proc(parent, child: ^UI_Block) {
