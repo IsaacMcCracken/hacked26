@@ -136,6 +136,46 @@ find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_Stat
 	return first_hovered
 }
 
+get_empty_pregnable :: proc(block: ^UI_Block, s: ^Editor_State) -> ^UI_Block
+{
+	pregnable_block :^UI_Block = nil
+
+	data := ui_kind_data[block.kind]
+
+	// Check if current block is pregnable and empty
+	if (.Pregnable in data.flags && list.is_empty(&block.children))
+	{
+		preg_rec := ui_pregnable_rec(block)
+		if (rl.CheckCollisionPointRec(s.mouse_pos, preg_rec))
+		{
+			pregnable_block = block
+		}
+	}
+
+	// Check if any of the children of the block are pregnable and empty
+	iter := list.iterator_head(block.children, UI_Block, "link")
+	for child in list.iterate_next(&iter)
+	{
+		pregnable_child := get_empty_pregnable(child, s)
+		if (pregnable_child != nil)
+		{
+			pregnable_block = pregnable_child 
+		}
+	}
+
+	return block
+}
+
+find_empty_pregnable :: proc(state: ^Editor_State) -> ^UI_Block
+{
+	for root_block in state.ui_blocks
+	{
+		empty_preg_block := get_empty_pregnable(root_block, state)
+		if (empty_preg_block != nil) { return empty_preg_block }
+	}
+	return nil
+}
+
 ui_pregnable_rec :: proc(b: ^UI_Block) -> rl.Rectangle {
 	rec := rl.Rectangle {
 		x      = b.pos.x,
@@ -267,8 +307,19 @@ select_block :: proc(s: ^Editor_State) {
 	}
 }
 
-unselect_block :: proc(s: ^Editor_State) {
-	if (s.selected_block != nil) {
+
+unselect_block :: proc(s: ^Editor_State)
+{
+	if (s.selected_block != nil)
+	{
+		// check for pregrable interactions
+		preg_block := find_empty_pregnable(s)
+		if (preg_block != nil)
+		{
+			// put selected block in preg_block
+			// push_child_block(preg_block, s.selected_block)
+			// ordered_remove(s.ui_blocks, s.selected_block)
+		}
 		set_selected(s.selected_block, false)
 		s.selected_block = nil
 	}
