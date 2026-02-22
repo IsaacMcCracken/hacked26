@@ -138,10 +138,10 @@ get_hovered_block :: proc(
 	return h, d
 }
 
-find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State) -> ^UI_Block {
+find_hovered_block :: proc(state: ^Editor_State) -> ^UI_Block {
 	// Find the foremost hovered block
 	first_hovered: ^UI_Block
-	loopy: for block in root_blocks {
+	loopy: for block in state.ui_blocks {
 		hovered_block, depth := get_hovered_block(block, state)
 		if (hovered_block != nil) {
 			first_hovered = hovered_block
@@ -409,7 +409,7 @@ update_editor :: proc(state: ^Editor_State, mouse_pos: vec2, mouse_left_down: bo
 	ui_layout_pass(state)
 
 	// TODO(rordon): selection pass
-	state.hovered_block = find_hovered_block(&state.ui_blocks, state)
+	state.hovered_block = find_hovered_block(state)
 	if (state.selected_block != nil) {
 		state.selected_block.pos = mouse_pos + state.selected_offset
 	}

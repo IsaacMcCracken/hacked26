@@ -25,7 +25,6 @@ state := struct {
 	log_buf_updated: bool,
 	bg:              mu.Color,
 	atlas_texture:   rl.Texture2D,
-	root_blocks:     [dynamic]^Block,
 	ui_blocks:       [dynamic]^UI_Block,
 } {
 	bg = {90, 95, 100, 255},
