@@ -16,6 +16,7 @@ UI_Kind_Flag :: enum {
 	Pregnable,
 	Name,
 	Input,
+	VArgs,
 }
 
 UI_Kind_Render_Data :: struct {
@@ -40,6 +41,13 @@ UI_Block :: struct {
 	hovered:    bool,
 	selected:   bool,
 	children:   list.List,
+	parent:		^UI_Block
+}
+
+push_child_block :: proc(parent, child: ^UI_Block)
+{
+	child.parent = parent
+	list.push_back(&parent.children, child)
 }
 
 init_editor :: proc(state: ^Editor_State) {
@@ -50,8 +58,8 @@ init_editor :: proc(state: ^Editor_State) {
 	c := new(UI_Block)
 
 	a.pos = {300, 100}
-	list.push_back(&a.children, b)
-	list.push_back(&a.children, c)
+	push_child_block(a, b)
+	push_child_block(a, c)
 
 	append(blocks, a)
 }
@@ -77,12 +85,16 @@ get_hovered_block :: proc(
 	d := base_depth
 
 	// Check if self is hovered
-	if (mouse_in_block(block, s.mouse_pos)) {h = block} else {block.hovered = false}
+	block.hovered = false
+	if (mouse_in_block(block, s.mouse_pos))
+	{
+		h = block
+	}
 
 	iter := list.iterator_head(block.children, UI_Block, "link")
 	for child in list.iterate_next(&iter) {
 		hovered_child, child_depth := get_hovered_block(child, s, base_depth + 1)
-		if (child != nil && child_depth > d) {
+		if (hovered_child != nil && child_depth > d) {
 			h = hovered_child
 			d = child_depth
 		}
@@ -117,7 +129,9 @@ ui_render_pass :: proc(s: ^Editor_State) {
 			height = b.size.y,
 		}
 		rl.DrawRectangleRec(rec, rl.DARKGRAY)
-		rl.DrawRectangleLinesEx(rec, 2, rl.RAYWHITE)
+		outlineColor := rl.RAYWHITE
+		if (b.hovered) { outlineColor = rl.BLACK }
+		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
 
 		iter := list.iterator_head(b.children, UI_Block, "link")
 		for child in list.iterate_next(&iter) {
@@ -154,7 +168,6 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 			count := 0
 			for child in list.iterate_next(&iter) {
 				count += 1
-				fmt.println("FUCKYOU", count)
 				ui_layout_block(s, child, b, level + 1)
 			}
 
@@ -171,7 +184,7 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 }
 
 
-update_editor :: proc(state: ^Editor_State, mouse_pos: vec2) {
+update_editor :: proc(state: ^Editor_State, mouse_pos: vec2, mouse_left_down: bool) {
 	state.mouse_pos = mouse_pos
 	// TODO(rordon): layout pass
 	ui_layout_pass(state)

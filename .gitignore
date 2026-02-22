@@ -2,5 +2,8 @@
 /hacked26.rdi
 /hacked26
 h26
+
 build/
 generated/
+/game
+/hacked26.pdb
