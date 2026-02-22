@@ -201,6 +201,24 @@ ui_pregnable_rec :: proc(b: ^UI_Block) -> rl.Rectangle {
 		height = BLOCK_SIZE.y,
 	}
 }
+ui_inputable_rec :: proc(b: ^UI_Block, idx: int) -> rl.Rectangle {
+	rec := rl.Rectangle {
+		x      = b.pos.x,
+		y      = b.pos.y,
+		width  = b.size.x,
+		height = b.size.y,
+	}
+	data := ui_kind_data[b.kind]
+	xmargin: f32 = MARGIN_SIDE + (f32(idx) * 2)
+	ymargin: f32 = MARGIN_TOP
+	if .Pregnable in data.flags do ymargin = MARGIN_INPUT
+	return rl.Rectangle {
+		x = rec.x + xmargin,
+		y = rec.y + ymargin,
+		width = BLOCK_SIZE.x,
+		height = BLOCK_SIZE.y,
+	}
+}
 
 ui_render_pass :: proc(s: ^Editor_State) {
 	ui_render_block :: proc(s: ^Editor_State, b: ^UI_Block) {
@@ -223,6 +241,14 @@ ui_render_pass :: proc(s: ^Editor_State) {
 			rl.DrawRectangleLinesEx(preg_rec, 2, outlineColor)
 
 		}
+
+		if .Inputable in data.flags {
+			for name, i in data.input_names {
+				input := b.inputs[i]
+				if input != nil do ui_render_block(s, input)
+			}
+		}
+
 
 		iter := list.iterator_head(b.children, UI_Block, "link")
 		for child in list.iterate_next(&iter) {
@@ -268,6 +294,17 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 			}
 		}
 
+		if .Inputable in data.flags {
+			if .Expr not_in data.flags {
+				xstart: f32 = MARGIN_SIDE
+				n := len(data.input_types)
+				inputs := b.inputs[:n]
+				for &input in inputs {
+					if input != nil do ui_layout_block(s, input)
+				}
+			}
+		}
+
 		// if we have children we change our size
 		if !list.is_empty(&b.children) {
 			iter := list.iterator_head(b.children, UI_Block, "link")
@@ -282,7 +319,7 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 			b.size.y = rel.y + tail.size.y + MARGIN_BOT
 		} else {
 			if .Pregnable in data.flags {
-				b.size += BLOCK_SIZE.y + MARGIN_BOT
+				b.size.y += BLOCK_SIZE.y + MARGIN_BOT
 			}
 		}
 
