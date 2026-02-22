@@ -50,6 +50,12 @@ push_child_block :: proc(parent, child: ^UI_Block)
 	list.push_back(&parent.children, child)
 }
 
+kind_render_data := [UI_Block_Kind]UI_Kind_Render_Data {
+	.If = {name = "if"},
+	.Else = {name = "else"},
+	.While = {},
+}
+
 init_editor :: proc(state: ^Editor_State) {
 	blocks := &state.ui_blocks
 
