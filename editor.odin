@@ -44,6 +44,7 @@ UI_Block_Kind :: enum {
 	If,
 	Else,
 	While,
+	Call,
 }
 
 
@@ -75,6 +76,17 @@ ui_kind_data := [UI_Block_Kind]UI_Kind_Data {
 		input_types = {i32},
 		input_names = {"cond"},
 	},
+	.Call = {
+		name = "CALL",
+		flags = {.Siblingable}
+	}
+}
+
+create_ui_block :: proc(kind: UI_Block_Kind) -> ^UI_Block
+{
+	new_block := new(UI_Block)
+	new_block.kind = kind
+	return new_block
 }
 
 push_child_block :: proc(parent, child: ^UI_Block) {
@@ -86,15 +98,13 @@ push_child_block :: proc(parent, child: ^UI_Block) {
 init_editor :: proc(state: ^Editor_State) {
 	blocks := &state.ui_blocks
 
-	a := new(UI_Block)
-	b := new(UI_Block)
-	c := new(UI_Block)
+	a := create_ui_block(.If)
+	b := create_ui_block(.Call)
+	c := create_ui_block(.Call)
+	d := create_ui_block(.If)
 
-	d := new(UI_Block)
-	d.kind = .If
 	d.pos = {400, 200}
 
-	a.kind = .If
 	a.pos = {300, 100}
 	push_child_block(a, b)
 	push_child_block(a, c)
