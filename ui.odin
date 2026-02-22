@@ -295,9 +295,28 @@ demo_windows :: proc(ctx: ^mu.Context, opts: ^mu.Options) {
 
 // ---------- NON TUTORIAL CODE BELOW ---------- //
 
-taskbar_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+Save_Load_UI_State :: struct {
+	save_name_buf: [64]byte,
+	save_name_len: int,
+	show_load_picker: bool,
+	save_list: [dynamic]string, // Refreshed every time picker is opened
+}
+
+@(private = "file")
+save_load_ui: Save_Load_UI_State
+
+@(private = "file")
+refresh_save_list :: proc() {
+	for s in save_load_ui.save_list do delete(s)
+	clear(&save_load_ui.save_list)
+	names := list_saves()
+	for n in names do append(&save_load_ui.save_list, n)
+}
+
+taskbar_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options, editor: ^Editor_State) {
 	if mu.window(ctx, "Top Task Bar", rect^, opts^) {
-		mu.layout_row(ctx, {100, 100, -90, -60, -30, -1})
+		mu.layout_row(ctx, {100, 100, 140, 50, 60, -90, -60, -30, -1})
+
 		if build_status == .Idle {
 			if .SUBMIT in mu.button(ctx, "Build") {
 				launch_build()
@@ -312,7 +331,31 @@ taskbar_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 		} else {
 			mu.button(ctx, "Flashing...")
 		}
+		
 		mu.label(ctx, "") // Empty space
+
+		mu.textbox(ctx, save_load_ui.save_name_buf[:], &save_load_ui.save_name_len)
+
+		if .SUBMIT in mu.button(ctx, "Save") {
+			name := string(save_load_ui.save_name_buf[:save_load_ui.save_name_len])
+			if len(name) == 0 {
+				write_log("Save: enter a name first")
+			} else if save_editor_to_file(editor, name) {
+				write_log(fmt.tprintf("Saved \"%s\"", name))
+			} else {
+				write_log(fmt.tprintf("Save failed for \"%s\"", name))
+			}
+		}
+
+		load_label := save_load_ui.show_load_picker ? "Load ▴" : "Load ▾"
+		if .SUBMIT in mu.button(ctx, load_label) {
+			save_load_ui.show_load_picker = !save_load_ui.show_load_picker
+			if save_load_ui.show_load_picker {
+				refresh_save_list()
+			}
+		}
+
+		mu.label(ctx, "") // Spacer
 		if .SUBMIT in mu.button(ctx, "___", .NONE, mu.Options{.ALIGN_CENTER}) {
 			rl.MinimizeWindow()
 		}
@@ -321,6 +364,46 @@ taskbar_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 		}
 		if .SUBMIT in mu.button(ctx, "", .CLOSE, mu.Options{}) {
 			rl.CloseWindow()
+		}
+	}
+}
+
+load_picker_window :: proc(ctx: ^mu.Context, editor: ^Editor_State, taskbar_h: i32) {
+	if !save_load_ui.show_load_picker do return
+
+	picker_rect := mu.Rect{rl.GetScreenWidth() - 280, taskbar_h, 260, 300}
+	picker_opts := mu.Options{.NO_RESIZE}
+
+	container := mu.get_container(ctx, "Load Save")
+	if container != nil && !container.open {
+		save_load_ui.show_load_picker = false
+		return
+	}
+
+	if mu.window(ctx, "Load Save", picker_rect, picker_opts) {
+		if len(save_load_ui.save_list) == 0 {
+			mu.layout_row(ctx, {-1})
+			mu.label(ctx, "No saves found in saves/")
+		} else {
+			mu.layout_row(ctx, {-1}, -28)
+			mu.begin_panel(ctx, "Save List")
+			for name in save_load_ui.save_list {
+				mu.layout_row(ctx, {-1})
+				if .SUBMIT in mu.button(ctx, name) {
+					if load_editor_from_file(editor, name) {
+						write_log(fmt.tprintf("Loaded \"%s\"", name))
+					} else {
+						write_log(fmt.tprintf("Load failed for \"%s\"", name))
+					}
+					save_load_ui.show_load_picker = false
+				}
+			}
+			mu.end_panel(ctx)
+		}
+
+		mu.layout_row(ctx, {-1})
+		if .SUBMIT in mu.button(ctx, "Refresh") {
+			refresh_save_list()
 		}
 	}
 }
@@ -417,10 +500,10 @@ dummy_editor_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options)
 
 }
 
-all_windows :: proc(ctx: ^mu.Context) {
-	taskbar_window_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_SCROLL, .NO_CLOSE, .NO_TITLE}
+all_windows :: proc(ctx: ^mu.Context, editor: ^Editor_State) {
+	taskbar_window_opts := mu.Options{.NO_RESIZE, .NO_SCROLL, .NO_CLOSE, .NO_TITLE}
 	taskbar_window_rect := mu.Rect{0, 0, rl.GetScreenWidth(), rl.GetScreenHeight() / 16}
-	taskbar_window(ctx, &taskbar_window_rect, &taskbar_window_opts)
+	taskbar_window(ctx, &taskbar_window_rect, &taskbar_window_opts, editor)
 
 	build_waiting_RPI_popup_rect := mu.Rect{300, 200, 360, 100}
 	build_waiting_RPI_popup_opts := mu.Options{.NO_CLOSE, .NO_RESIZE}
@@ -456,4 +539,5 @@ all_windows :: proc(ctx: ^mu.Context) {
 	// editor_window(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options)
 	dummy_editor_window(ctx, &editor_window_rect, &editor_window_opts)
 
+	load_picker_window(ctx, editor, taskbar_window_rect.h)
 }

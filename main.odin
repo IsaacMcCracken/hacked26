@@ -205,7 +205,7 @@ main :: proc() {
 		poll_flash_status()
 
 		mu.begin(ctx)
-		all_windows(ctx)
+		all_windows(ctx, &editor_state)
 		mu.end(ctx)
 
 		render(&editor_state)
