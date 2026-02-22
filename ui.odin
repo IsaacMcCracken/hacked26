@@ -297,8 +297,8 @@ demo_windows :: proc(ctx: ^mu.Context, opts: ^mu.Options) {
 
 taskbar_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 	if mu.window(ctx, "Top Task Bar", rect^, opts^) {
-		mu.layout_row(ctx, {120, -90, -60, -30, -1})
-		if build_status == .Idle || build_status == .Done {
+		mu.layout_row(ctx, {100, 100, -90, -60, -30, -1})
+		if build_status == .Idle {
 			if .SUBMIT in mu.button(ctx, "Build & Flash") {
 				launch_build()
 			}
@@ -340,25 +340,25 @@ build_waiting_RPI_popup :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Opti
 
 // Create and render a popup displayed when
 // - the built artifact is being transferred to the RPI device.
-build_transferring_popup :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
-	if build_status == .Transferring {
-		if mu.window(ctx, "Flash Popup", rect^, opts^) {
-			mu.layout_row(ctx, {-1})
-			mu.label(ctx, "Transferring .uf2 to RPI...")
-		}
-	}
-}
+// build_transferring_popup :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+// 	if build_status == .Transferring {
+// 		if mu.window(ctx, "Flash Popup", rect^, opts^) {
+// 			mu.layout_row(ctx, {-1})
+// 			mu.label(ctx, "Transferring .uf2 to RPI...")
+// 		}
+// 	}
+// }
 
 // Create and render a popup displayed when
 // - the built artifact has been successfully transferred to the RPI device.
-build_done_popup :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
-	if build_status == .Done {
-		if mu.window(ctx, "Flash Popup", rect^, opts^) {
-			mu.layout_row(ctx, {-1})
-			mu.label(ctx, "Flash complete! RPI rebooting.")
-		}
-	}
-}
+// build_done_popup :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
+// 	if build_status == .Done {
+// 		if mu.window(ctx, "Flash Popup", rect^, opts^) {
+// 			mu.layout_row(ctx, {-1})
+// 			mu.label(ctx, "Flash complete! RPI rebooting.")
+// 		}
+// 	}
+// }
 
 
 log_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
@@ -413,13 +413,13 @@ all_windows :: proc(ctx: ^mu.Context) {
 	build_waiting_RPI_popup_opts := mu.Options{.NO_CLOSE, .NO_RESIZE}
 	build_waiting_RPI_popup(ctx, &build_waiting_RPI_popup_rect, &build_waiting_RPI_popup_opts)
 
-	build_transferring_popup_rect := mu.Rect{300, 200, 300, 80}
-	build_transferring_popup_opts := mu.Options{.NO_RESIZE}
-	build_transferring_popup(ctx, &build_transferring_popup_rect, &build_transferring_popup_opts)
+	// build_transferring_popup_rect := mu.Rect{300, 200, 300, 80}
+	// build_transferring_popup_opts := mu.Options{.NO_RESIZE}
+	// build_transferring_popup(ctx, &build_transferring_popup_rect, &build_transferring_popup_opts)
 
-	build_done_popup_rect := build_transferring_popup_rect
-	build_done_popup_opts := build_transferring_popup_opts
-	build_done_popup(ctx, &build_done_popup_rect, &build_done_popup_opts)
+	// build_done_popup_rect := build_transferring_popup_rect
+	// build_done_popup_opts := build_transferring_popup_opts
+	// build_done_popup(ctx, &build_done_popup_rect, &build_done_popup_opts)
 
 	log_window_opts := mu.Options{.NO_INTERACT, .NO_RESIZE, .NO_CLOSE}
 	log_window_rect := mu.Rect {
