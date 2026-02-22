@@ -14,6 +14,8 @@ DEFAULT_PREGNALBE_SIZE :: vec2{DEFAULT_SIZE.x, DEFAULT_SIZE.y + 2 * DEFAULT_MARG
 Editor_State :: struct {
 	ui_blocks: [dynamic]^UI_Block,
 	mouse_pos: vec2,
+	hovered_block: ^UI_Block,
+	selected_block: ^UI_Block
 }
 
 
@@ -123,7 +125,8 @@ get_hovered_block :: proc(
 	return h, d
 }
 
-find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State) {
+find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_State) -> ^UI_Block
+{
 	// check each root block for selection
 	first_hovered: ^UI_Block
 	loopy: for block in root_blocks {
@@ -137,6 +140,8 @@ find_hovered_block :: proc(root_blocks: ^[dynamic]^UI_Block, state: ^Editor_Stat
 	if (first_hovered != nil) {
 		first_hovered.hovered = true
 	}
+
+	return first_hovered
 }
 
 ui_pregnable_rec :: proc(b: ^UI_Block) -> rl.Rectangle {
@@ -166,7 +171,8 @@ ui_render_pass :: proc(s: ^Editor_State) {
 		}
 		rl.DrawRectangleRec(rec, rl.DARKGRAY)
 		outlineColor := rl.RAYWHITE
-		if (b.hovered) {outlineColor = rl.BLACK}
+		if (b.hovered) { outlineColor = rl.BLACK }
+		if (b.selected) { outlineColor = rl.YELLOW}
 		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
 
 		if .Pregnable in data.flags {
@@ -269,11 +275,21 @@ unselect_block :: proc(s: ^Editor_State)
 	}
 }
 
+
 update_editor :: proc(state: ^Editor_State, mouse_pos: vec2, mouse_left_down: bool) {
 	state.mouse_pos = mouse_pos
 	// TODO(rordon): layout pass
 	ui_layout_pass(state)
 
 	// TODO(rordon): selection pass
-	find_hovered_block(&state.ui_blocks, state)
+	state.hovered_block = find_hovered_block(&state.ui_blocks, state)
+
+	if (mouse_left_down)
+	{
+		select_block(state)
+	}
+	else if (state.selected_block != nil)
+	{
+		unselect_block(state)
+	}
 }

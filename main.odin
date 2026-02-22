@@ -150,7 +150,7 @@ main :: proc() {
 		mu.input_scroll(ctx, 0, i32(rl.GetMouseWheelMove() * -30))
 
 		// Update Editor
-		update_editor(&editor_state, rl.GetMousePosition(), rl.IsMouseButtonPressed(.LEFT))
+		update_editor(&editor_state, rl.GetMousePosition(), rl.IsMouseButtonDown(.LEFT))
 
 
 		{ 	// text input
