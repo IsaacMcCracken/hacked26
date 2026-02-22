@@ -9,7 +9,7 @@ DEFAULT_SPACE :: 2
 DEFAULT_SIZE :: vec2{200, 30}
 DEFAULT_MARGIN :: 15
 DEFAULT_TEXT_MARGIN :: vec2{10, 0}
-DEFAULT_PREGNALBE_SIZE :: vec2{DEFAULT_SIZE.x, DEFAULT_SIZE.y + 2 * DEFAULT_MARGIN}
+DEFAULT_PREGNABLE_SIZE :: vec2{DEFAULT_SIZE.x, DEFAULT_SIZE.y + 2 * DEFAULT_MARGIN}
 
 Editor_State :: struct {
 	ui_blocks: [dynamic]^UI_Block,
@@ -230,7 +230,7 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 			b.size.y = rel.y + tail.size.y + DEFAULT_MARGIN
 		} else {
 			if .Pregnable in data.flags {
-				b.size = DEFAULT_PREGNALBE_SIZE
+				b.size = DEFAULT_PREGNABLE_SIZE
 			}
 		}
 
