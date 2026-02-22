@@ -183,6 +183,40 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 	}
 }
 
+set_selected :: proc (block: ^UI_Block, value: bool)
+{
+	block.selected = value
+
+	iter := list.iterator_head(block.children, UI_Block, "link")
+	for child in list.iterate_next(&iter)
+	{
+		set_selected(child, value)
+	}
+}
+// Selected a hovered block
+select_block :: proc(s: ^Editor_State)
+{
+	if (s.hovered_block != nil && s.selected_block == nil)
+	{
+		s.selected_block = s.hovered_block
+		set_selected(s.selected_block, true)
+		if (s.selected_block.parent != nil)
+		{
+			list.remove(&s.selected_block.parent.children, s.selected_block) 
+			s.selected_block.parent = nil
+			append(&s.ui_blocks, s.selected_block)
+		}
+	}
+}
+
+unselect_block :: proc(s: ^Editor_State)
+{
+	if (s.selected_block != nil)
+	{
+		set_selected(s.selected_block, false)
+		s.selected_block = nil 
+	}
+}
 
 update_editor :: proc(state: ^Editor_State, mouse_pos: vec2, mouse_left_down: bool) {
 	state.mouse_pos = mouse_pos
