@@ -80,6 +80,7 @@ init_editor :: proc(state: ^Editor_State) {
 	d.kind = .If
 	d.pos = {400, 200}
 
+	a.kind = .If
 	a.pos = {300, 100}
 	push_child_block(a, b)
 	push_child_block(a, c)
@@ -163,15 +164,18 @@ get_empty_pregnable :: proc(block: ^UI_Block, s: ^Editor_State) -> ^UI_Block
 		}
 	}
 
-	return block
+	return pregnable_block
 }
 
 find_empty_pregnable :: proc(state: ^Editor_State) -> ^UI_Block
 {
 	for root_block in state.ui_blocks
 	{
-		empty_preg_block := get_empty_pregnable(root_block, state)
-		if (empty_preg_block != nil) { return empty_preg_block }
+		if root_block != state.selected_block
+		{
+			empty_preg_block := get_empty_pregnable(root_block, state)
+			if (empty_preg_block != nil) { return empty_preg_block }
+		}
 	}
 	return nil
 }
@@ -205,7 +209,6 @@ ui_render_pass :: proc(s: ^Editor_State) {
 		outlineColor := rl.RAYWHITE
 		if (b == s.hovered_block) {outlineColor = rl.BLACK}
 		if (b.selected) {outlineColor = rl.YELLOW}
-		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
 
 		if .Pregnable in data.flags {
 			preg_rec := ui_pregnable_rec(b)
@@ -213,6 +216,20 @@ ui_render_pass :: proc(s: ^Editor_State) {
 			rl.DrawRectangleLinesEx(preg_rec, 2, outlineColor)
 
 		}
+
+		if .Siblingable in data.flags
+		{
+			if (s.selected_block != nil)
+			{
+				selected_block_data := ui_kind_data[b.kind]
+				if (.Siblingable in selected_block_data.flags)
+				{
+					outlineColor = rl.RED
+				}
+			}
+		}
+
+		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
 
 		iter := list.iterator_head(b.children, UI_Block, "link")
 		for child in list.iterate_next(&iter) {
