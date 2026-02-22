@@ -299,7 +299,7 @@ taskbar_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 	if mu.window(ctx, "Top Task Bar", rect^, opts^) {
 		mu.layout_row(ctx, {100, 100, -90, -60, -30, -1})
 		if build_status == .Idle {
-			if .SUBMIT in mu.button(ctx, "Build & Flash") {
+			if .SUBMIT in mu.button(ctx, "Build") {
 				launch_build()
 			}
 		} else {
@@ -328,7 +328,7 @@ taskbar_window :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
 // Create and render a popup displayed when:
 // - the build is complete and waiting for RPI connection.
 build_waiting_RPI_popup :: proc(ctx: ^mu.Context, rect: ^mu.Rect, opts: ^mu.Options) {
-	if build_status == .Waiting_For_RPI {
+	if flash_status == .Waiting_For_RPI {
 		if mu.window(ctx, "RPI Popup", rect^, opts^) {
 			mu.layout_row(ctx, {-1})
 			mu.label(ctx, "Plug in RPI while holding BOOT button")
