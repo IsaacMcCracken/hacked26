@@ -45,6 +45,7 @@ UI_Block_Kind :: enum {
 	Else,
 	While,
 	Call,
+	Init,
 }
 
 
@@ -79,6 +80,10 @@ ui_kind_data := [UI_Block_Kind]UI_Kind_Data {
 	.Call = {
 		name = "CALL",
 		flags = {.Siblingable}
+	},
+	.Init = {
+		name = "INIT",
+		flags = {.Pregnable, .Name}
 	}
 }
 
@@ -102,14 +107,16 @@ init_editor :: proc(state: ^Editor_State) {
 	b := create_ui_block(.Call)
 	c := create_ui_block(.Call)
 	d := create_ui_block(.If)
+	e := create_ui_block(.Init)
 
 	d.pos = {400, 200}
+	e.pos = {600, 200}
 
 	a.pos = {300, 100}
 	push_child_block(a, b)
 	push_child_block(a, c)
 
-	append(blocks, a, d)
+	append(blocks, a, d, e)
 }
 
 mouse_in_block :: proc(block: ^UI_Block, mp: vec2) -> bool {
@@ -401,12 +408,18 @@ select_block :: proc(s: ^Editor_State) {
 unselect_block :: proc(s: ^Editor_State) {
 	if (s.selected_block != nil) {
 		// check for pregrable interactions
-		preg_block := find_empty_pregnable(s)
-		if (preg_block != nil) {
-			// put selected block in preg_block
-			push_child_block(preg_block, s.selected_block)
-			remove_root_block(s, s.selected_block)
+		selected_block_data := ui_kind_data[s.selected_block.kind]
+		if (.Siblingable in selected_block_data.flags)
+		{
+			preg_block := find_empty_pregnable(s)
+			if (preg_block != nil)
+			{
+				// put selected block in preg_block
+				push_child_block(preg_block, s.selected_block)
+				remove_root_block(s, s.selected_block)
+			}
 		}
+
 		set_selected(s.selected_block, false)
 		s.selected_block = nil
 	}
