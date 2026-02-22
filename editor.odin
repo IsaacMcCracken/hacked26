@@ -245,7 +245,7 @@ set_selected :: proc(block: ^UI_Block, value: bool) {
 
 	iter := list.iterator_head(block.children, UI_Block, "link")
 	for child in list.iterate_next(&iter) {
-		set_selected(child, true)
+		set_selected(child, value)
 	}
 }
 
@@ -259,9 +259,18 @@ select_block :: proc(s: ^Editor_State) {
 		if (s.selected_block.parent != nil) {
 			list.remove(&s.selected_block.parent.children, s.selected_block)
 			s.selected_block.parent = nil
+		} else {
+		    // The block is a root block. Before we move it to the back of the dynamic array,
+			// we need to delete the pointer to that root block and increment the rest of the
+			// dynamic array.
+			for c_i := 0; c_i < len(s.ui_blocks); c_i += 1 {
+				if (s.ui_blocks[c_i] == s.selected_block) {
+					ordered_remove(&s.ui_blocks, c_i)
+					break
+				}
+			}
 		}
-		// Move the selected block to the back of the dynamic array
-		// ordered_remove(&s.ui_blocks, s.selected_block)
+  		// Move the block to the back of the dynamic array
 		append(&s.ui_blocks, s.selected_block)
 	}
 }
