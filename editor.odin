@@ -15,7 +15,8 @@ Editor_State :: struct {
 	ui_blocks: [dynamic]^UI_Block,
 	mouse_pos: vec2,
 	hovered_block: ^UI_Block,
-	selected_block: ^UI_Block
+	selected_block: ^UI_Block,
+	selected_offset: vec2
 }
 
 
@@ -257,6 +258,8 @@ select_block :: proc(s: ^Editor_State)
 	{
 		s.selected_block = s.hovered_block
 		set_selected(s.selected_block, true)
+		offset := s.selected_block.pos - s.mouse_pos
+		s.selected_offset = offset
 		if (s.selected_block.parent != nil)
 		{
 			list.remove(&s.selected_block.parent.children, s.selected_block) 
@@ -283,6 +286,10 @@ update_editor :: proc(state: ^Editor_State, mouse_pos: vec2, mouse_left_down: bo
 
 	// TODO(rordon): selection pass
 	state.hovered_block = find_hovered_block(&state.ui_blocks, state)
+	if (state.selected_block != nil)
+	{
+		state.selected_block.pos = mouse_pos + state.selected_offset
+	}
 
 	if (mouse_left_down)
 	{
