@@ -5,3 +5,5 @@ h26
 game
 build/
 generated/
+/game
+/hacked26.pdb
