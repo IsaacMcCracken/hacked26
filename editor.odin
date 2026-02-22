@@ -6,10 +6,12 @@ import "core:fmt"
 import rl "vendor:raylib"
 
 DEFAULT_SPACE :: 2
-DEFAULT_SIZE :: vec2{200, 30}
-DEFAULT_MARGIN :: 15
-DEFAULT_TEXT_MARGIN :: vec2{10, 0}
-DEFAULT_PREGNABLE_SIZE :: vec2{DEFAULT_SIZE.x, DEFAULT_SIZE.y + 2 * DEFAULT_MARGIN}
+BLOCK_SIZE :: vec2{200, 30}
+EXPR_SIZE :: vec2{60, 25}
+MARGIN_SIDE :: 10
+MARGIN_TOP :: 15
+MARGIN_BOT :: 5
+MARGIN_INPUT :: MARGIN_TOP + EXPR_SIZE.y + MARGIN_BOT
 
 Editor_State :: struct {
 	ui_blocks:       [dynamic]^UI_Block,
@@ -25,7 +27,8 @@ UI_Kind_Flag :: enum {
 	Pregnable,
 	Siblingable,
 	Name,
-	Input,
+	Inputable,
+	Expr,
 	VArgs,
 }
 
@@ -33,6 +36,7 @@ UI_Kind_Data :: struct {
 	name:        string,
 	flags:       UI_Kind_Flags,
 	input_types: []typeid,
+	input_names: []string,
 }
 
 UI_Block_Kind :: enum {
@@ -46,7 +50,7 @@ UI_Block_Kind :: enum {
 UI_Block :: struct {
 	using link: list.Node,
 	text:       small_array.Small_Array(32, u8),
-	input:      list.List,
+	inputs:     [16]^UI_Block,
 	kind:       UI_Block_Kind,
 	pos:        vec2,
 	size:       vec2,
@@ -58,9 +62,19 @@ UI_Block :: struct {
 
 ui_kind_data := [UI_Block_Kind]UI_Kind_Data {
 	.None = {name = ""},
-	.If = {name = "IF", flags = {.Siblingable, .Pregnable, .Input, .Name}},
+	.If = {
+		name = "IF",
+		flags = {.Siblingable, .Pregnable, .Inputable, .Name},
+		input_types = {i32},
+		input_names = {"cond"},
+	},
 	.Else = {name = "ELSE", flags = {.Siblingable, .Pregnable, .Name}},
-	.While = {name = "IF", flags = {.Siblingable, .Pregnable, .Input, .Name}},
+	.While = {
+		name = "IF",
+		flags = {.Siblingable, .Pregnable, .Inputable, .Name},
+		input_types = {i32},
+		input_names = {"cond"},
+	},
 }
 
 push_child_block :: proc(parent, child: ^UI_Block) {
@@ -80,6 +94,7 @@ init_editor :: proc(state: ^Editor_State) {
 	d.kind = .If
 	d.pos = {400, 200}
 
+	a.kind = .If
 	a.pos = {300, 100}
 	push_child_block(a, b)
 	push_child_block(a, c)
@@ -136,6 +151,44 @@ find_hovered_block :: proc(state: ^Editor_State) -> ^UI_Block {
 	return first_hovered
 }
 
+get_empty_pregnable :: proc(block: ^UI_Block, s: ^Editor_State) -> ^UI_Block {
+	pregnable_block: ^UI_Block = nil
+
+	data := ui_kind_data[block.kind]
+
+	// Check if current block is pregnable and empty
+	if (.Pregnable in data.flags && list.is_empty(&block.children)) {
+		preg_rec := ui_pregnable_rec(block)
+		if (rl.CheckCollisionPointRec(s.mouse_pos, preg_rec)) {
+			pregnable_block = block
+		}
+	}
+
+	// Check if any of the children of the block are pregnable and empty
+	iter := list.iterator_head(block.children, UI_Block, "link")
+	for child in list.iterate_next(&iter) {
+		pregnable_child := get_empty_pregnable(child, s)
+		if (pregnable_child != nil) {
+			pregnable_block = pregnable_child
+		}
+	}
+
+	return pregnable_block
+}
+
+find_empty_pregnable :: proc(state: ^Editor_State) -> ^UI_Block
+{
+	for root_block in state.ui_blocks
+	{
+		if root_block != state.selected_block
+		{
+			empty_preg_block := get_empty_pregnable(root_block, state)
+			if (empty_preg_block != nil) { return empty_preg_block }
+		}
+	}
+	return nil
+}
+
 ui_pregnable_rec :: proc(b: ^UI_Block) -> rl.Rectangle {
 	rec := rl.Rectangle {
 		x      = b.pos.x,
@@ -143,12 +196,33 @@ ui_pregnable_rec :: proc(b: ^UI_Block) -> rl.Rectangle {
 		width  = b.size.x,
 		height = b.size.y,
 	}
-
+	data := ui_kind_data[b.kind]
+	xmargin: f32 = MARGIN_SIDE
+	ymargin: f32 = MARGIN_TOP
+	if .Pregnable in data.flags do ymargin = MARGIN_INPUT
 	return rl.Rectangle {
-		x = rec.x + DEFAULT_MARGIN,
-		y = rec.y + DEFAULT_MARGIN,
-		width = DEFAULT_SIZE.x,
-		height = DEFAULT_SIZE.y,
+		x = rec.x + xmargin,
+		y = rec.y + ymargin,
+		width = BLOCK_SIZE.x,
+		height = BLOCK_SIZE.y,
+	}
+}
+ui_inputable_rec :: proc(b: ^UI_Block, idx: int) -> rl.Rectangle {
+	rec := rl.Rectangle {
+		x      = b.pos.x,
+		y      = b.pos.y,
+		width  = b.size.x,
+		height = b.size.y,
+	}
+	data := ui_kind_data[b.kind]
+	xmargin: f32 = MARGIN_SIDE + (f32(idx) * 2)
+	ymargin: f32 = MARGIN_TOP
+	if .Pregnable in data.flags do ymargin = MARGIN_INPUT
+	return rl.Rectangle {
+		x = rec.x + xmargin,
+		y = rec.y + ymargin,
+		width = BLOCK_SIZE.x,
+		height = BLOCK_SIZE.y,
 	}
 }
 
@@ -165,7 +239,6 @@ ui_render_pass :: proc(s: ^Editor_State) {
 		outlineColor := rl.RAYWHITE
 		if (b == s.hovered_block) {outlineColor = rl.BLACK}
 		if (b.selected) {outlineColor = rl.YELLOW}
-		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
 
 		if .Pregnable in data.flags {
 			preg_rec := ui_pregnable_rec(b)
@@ -174,13 +247,34 @@ ui_render_pass :: proc(s: ^Editor_State) {
 
 		}
 
+		if .Siblingable in data.flags
+		{
+			if (s.selected_block != nil)
+			{
+				selected_block_data := ui_kind_data[b.kind]
+				if (.Siblingable in selected_block_data.flags)
+				{
+					outlineColor = rl.RED
+				}
+			}
+		}
+
+		rl.DrawRectangleLinesEx(rec, 2, outlineColor)
+		if .Inputable in data.flags {
+			for name, i in data.input_names {
+				input := b.inputs[i]
+				if input != nil do ui_render_block(s, input)
+			}
+		}
+
+
 		iter := list.iterator_head(b.children, UI_Block, "link")
 		for child in list.iterate_next(&iter) {
 			ui_render_block(s, child)
 		}
 
 		if .Name in data.flags {
-			render_text(data.name, b.pos + DEFAULT_TEXT_MARGIN, outlineColor)
+			render_text(data.name, b.pos + {5, 5}, outlineColor)
 		}
 	}
 
@@ -190,20 +284,42 @@ ui_render_pass :: proc(s: ^Editor_State) {
 }
 
 ui_layout_pass :: proc(s: ^Editor_State) {
-	ui_layout_block :: proc(s: ^Editor_State, b: ^UI_Block, p: ^UI_Block = nil, level := 0) {
+	ui_layout_block :: proc(s: ^Editor_State, b: ^UI_Block, level := 0) {
 		data := ui_kind_data[b.kind]
 
 
-		b.size = DEFAULT_SIZE
+		b.size = BLOCK_SIZE
 
+		if .Inputable in data.flags {
+			b.size.y = MARGIN_INPUT
+		}
+
+		p := b.parent
 		// if it has a parent we change the size
 		if p != nil {
-			b.pos.x = p.pos.x + DEFAULT_MARGIN
+			b.pos = p.pos
+			b.pos.x += MARGIN_SIDE
+
+			pdata := ui_kind_data[p.kind]
+
 			prev := transmute(^UI_Block)b.prev
 			if prev == nil {
-				b.pos.y = p.pos.y + DEFAULT_MARGIN
+				ymargin: f32 = MARGIN_TOP
+				if .Inputable in pdata.flags do ymargin = MARGIN_INPUT
+				b.pos.y += ymargin
 			} else {
 				b.pos.y = prev.pos.y + prev.size.y + DEFAULT_SPACE
+			}
+		}
+
+		if .Inputable in data.flags {
+			if .Expr not_in data.flags {
+				xstart: f32 = MARGIN_SIDE
+				n := len(data.input_types)
+				inputs := b.inputs[:n]
+				for &input in inputs {
+					if input != nil do ui_layout_block(s, input)
+				}
 			}
 		}
 
@@ -213,15 +329,15 @@ ui_layout_pass :: proc(s: ^Editor_State) {
 			count := 0
 			for child in list.iterate_next(&iter) {
 				count += 1
-				ui_layout_block(s, child, b, level + 1)
+				ui_layout_block(s, child)
 			}
 
 			tail := transmute(^UI_Block)b.children.tail
 			rel := tail.pos - b.pos
-			b.size.y = rel.y + tail.size.y + DEFAULT_MARGIN
+			b.size.y = rel.y + tail.size.y + MARGIN_BOT
 		} else {
 			if .Pregnable in data.flags {
-				b.size = DEFAULT_PREGNABLE_SIZE
+				b.size.y += BLOCK_SIZE.y + MARGIN_BOT
 			}
 		}
 
@@ -241,6 +357,15 @@ set_selected :: proc(block: ^UI_Block, value: bool) {
 	}
 }
 
+remove_root_block :: proc(s: ^Editor_State, b: ^UI_Block) {
+	for c_i := 0; c_i < len(s.ui_blocks); c_i += 1 {
+		if (s.ui_blocks[c_i] == b) {
+			ordered_remove(&s.ui_blocks, c_i)
+			break
+		}
+	}
+}
+
 // Selected a hovered block
 select_block :: proc(s: ^Editor_State) {
 	if (s.hovered_block != nil && s.selected_block == nil) {
@@ -255,20 +380,23 @@ select_block :: proc(s: ^Editor_State) {
 			// The block is a root block. Before we move it to the back of the dynamic array,
 			// we need to delete the pointer to that root block and increment the rest of the
 			// dynamic array.
-			for c_i := 0; c_i < len(s.ui_blocks); c_i += 1 {
-				if (s.ui_blocks[c_i] == s.selected_block) {
-					ordered_remove(&s.ui_blocks, c_i)
-					break
-				}
-			}
+			remove_root_block(s, s.selected_block)
 		}
 		// Move the block to the back of the dynamic array
 		append(&s.ui_blocks, s.selected_block)
 	}
 }
 
+
 unselect_block :: proc(s: ^Editor_State) {
 	if (s.selected_block != nil) {
+		// check for pregrable interactions
+		preg_block := find_empty_pregnable(s)
+		if (preg_block != nil) {
+			// put selected block in preg_block
+			push_child_block(preg_block, s.selected_block)
+			remove_root_block(s, s.selected_block)
+		}
 		set_selected(s.selected_block, false)
 		s.selected_block = nil
 	}
